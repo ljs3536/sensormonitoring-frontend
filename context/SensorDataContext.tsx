@@ -13,11 +13,19 @@ import {
 export interface UiSettings {
   piezo: {
     sampleRate: number;
+    windowType: string; // 'hann', 'hamming', 'none' 등
+    yAxisMode: "auto" | "fixed";
+    yAxisMin: number;
+    yAxisMax: number;
   };
   adxl: {
     sampleRate: number;
+    windowType: string;
     gRange: string;
     visibleAxis: { x: boolean; y: boolean; z: boolean };
+    yAxisMode: "auto" | "fixed";
+    yAxisMin: number;
+    yAxisMax: number;
   };
 }
 
@@ -64,11 +72,21 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
 
   // 4. 화면 제어용 UI 설정값 상태 (API 전송 X, 오직 프론트엔드용)
   const [uiSettings, setUiSettings] = useState<UiSettings>({
-    piezo: { sampleRate: 1000 },
+    piezo: {
+      sampleRate: 1000,
+      windowType: "hann",
+      yAxisMode: "auto",
+      yAxisMin: 0,
+      yAxisMax: 5,
+    },
     adxl: {
       sampleRate: 1000,
+      windowType: "hann",
       gRange: "2g",
       visibleAxis: { x: true, y: true, z: true },
+      yAxisMode: "auto",
+      yAxisMin: -2,
+      yAxisMax: 2,
     },
   });
 
@@ -112,8 +130,9 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
           }
           // FFT 데이터 (사이드바의 sampleRate 설정값을 쿼리로 보냄)
           const sr = uiSettings.piezo.sampleRate;
+          const win = uiSettings.piezo.windowType;
           const fftRes = await fetch(
-            `http://localhost:8001/api/data/fft/piezo?sample_rate=${sr}`,
+            `http://localhost:8001/api/data/fft/piezo?sample_rate=${sr}&window=${win}`,
           );
           if (fftRes.ok) setPiezoFftData(await fftRes.json());
         }
@@ -130,6 +149,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
           }
           // FFT 데이터
           const sr = uiSettings.adxl.sampleRate;
+          const win = uiSettings.adxl.windowType;
           // FFT는 단일 배열이므로, 화면에 켜져 있는 축(x, y, z 중 첫번째)을 기준으로 요청합니다.
           const axis = uiSettings.adxl.visibleAxis.x
             ? "x"
@@ -137,7 +157,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
               ? "y"
               : "z";
           const fftRes = await fetch(
-            `http://localhost:8001/api/data/fft/adxl?sample_rate=${sr}&axis=${axis}`,
+            `http://localhost:8001/api/data/fft/adxl?sample_rate=${sr}&axis=${axis}&window=${win}`,
           );
           if (fftRes.ok) setAdxlFftData(await fftRes.json());
         }

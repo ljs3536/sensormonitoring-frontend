@@ -20,6 +20,10 @@ interface SensorViewProps {
   rawKey: string; // 'value' 또는 'x', 'y', 'z'
   color: string;
   unit?: string;
+  // 👇 여기서부터 새로 추가된 부분 (Y축 제어용 변수 선언)
+  yMode?: "auto" | "fixed";
+  yMin?: number;
+  yMax?: number;
 }
 
 export function SensorView({
@@ -29,6 +33,10 @@ export function SensorView({
   rawKey,
   color,
   unit,
+  // 👇 부모에게서 전달받은 값을 사용 (기본값도 설정)
+  yMode = "auto",
+  yMin = 0,
+  yMax = 5,
 }: SensorViewProps) {
   return (
     <div className="flex-1 p-6 flex flex-col space-y-6 overflow-y-auto bg-background">
@@ -84,25 +92,26 @@ export function SensorView({
                 vertical={false}
                 stroke="var(--border)"
               />
-              {/* X축은 Frequency */}
               <XAxis
                 dataKey="frequency"
                 stroke="var(--muted-foreground)"
                 fontSize={12}
                 unit="Hz"
               />
+
+              {/* 👇 전달받은 yMode, yMin, yMax를 드디어 사용합니다! */}
               <YAxis
-                domain={["auto", "auto"]}
+                domain={yMode === "fixed" ? [yMin, yMax] : ["auto", "auto"]}
                 stroke="var(--muted-foreground)"
                 fontSize={12}
               />
+
               <Tooltip
                 contentStyle={{
                   backgroundColor: "var(--card)",
                   borderColor: "var(--border)",
                 }}
               />
-              {/* FFT는 면적(Area) 그래프로 그리면 더 분석적여 보입니다. */}
               <Area
                 type="monotone"
                 dataKey="magnitude"

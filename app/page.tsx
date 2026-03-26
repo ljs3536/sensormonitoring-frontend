@@ -9,11 +9,9 @@ import { SensorView } from "@/components/SensorView";
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"piezo" | "adxl">("piezo");
 
-  // Context에서 모든 데이터(RAW, FFT, UI설정)를 꺼내옵니다.
   const { piezoData, piezoFftData, adxlData, adxlFftData, uiSettings } =
     useSensorData();
 
-  // ADXL의 경우 사용자가 사이드바에서 선택한 축('x', 'y', 'z')을 알아냅니다.
   const adxlSelectedAxis = uiSettings.adxl.visibleAxis.x
     ? "x"
     : uiSettings.adxl.visibleAxis.y
@@ -44,27 +42,33 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 좌측: 제어판 */}
         <ControlSidebar type={activeTab} />
 
-        {/* 우측: 그래프 화면 */}
         {activeTab === "piezo" ? (
           <SensorView
             title="Piezo 센서"
             rawData={piezoData}
             fftData={piezoFftData}
-            rawKey="value" // Piezo는 값이 'value'에 담겨 있습니다.
+            rawKey="value"
             color="#4f46e5"
             unit="V"
+            // 👇 사이드바에서 바꾼 값을 View로 넘겨줌!
+            yMode={uiSettings.piezo.yAxisMode}
+            yMin={uiSettings.piezo.yAxisMin}
+            yMax={uiSettings.piezo.yAxisMax}
           />
         ) : (
           <SensorView
             title={`ADXL 가속도 센서 (${adxlSelectedAxis.toUpperCase()}축)`}
             rawData={adxlData}
             fftData={adxlFftData}
-            rawKey={adxlSelectedAxis} // 사용자가 선택한 축(x, y, z)을 Key로 사용합니다.
+            rawKey={adxlSelectedAxis}
             color="#ef4444"
             unit="g"
+            // 👇 사이드바에서 바꾼 값을 View로 넘겨줌!
+            yMode={uiSettings.adxl.yAxisMode}
+            yMin={uiSettings.adxl.yAxisMin}
+            yMax={uiSettings.adxl.yAxisMax}
           />
         )}
       </div>
