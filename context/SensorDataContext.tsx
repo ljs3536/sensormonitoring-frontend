@@ -8,6 +8,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { API } from "@/lib/api";
 
 // --- [추가] UI 설정값 타입 정의 ---
 export interface UiSettings {
@@ -121,9 +122,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
         // --- Piezo가 켜져 있을 때 ---
         if (piezoRunning) {
           // RAW 데이터
-          const rawRes = await fetch(
-            "http://localhost:8001/api/data/latest/piezo",
-          );
+          const rawRes = await fetch(API.LATEST_PIEZO);
           if (rawRes.ok) {
             const rawData = await rawRes.json();
             if (rawData.history) setPiezoData(rawData.history);
@@ -131,18 +130,14 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
           // FFT 데이터 (사이드바의 sampleRate 설정값을 쿼리로 보냄)
           const sr = uiSettings.piezo.sampleRate;
           const win = uiSettings.piezo.windowType;
-          const fftRes = await fetch(
-            `http://localhost:8001/api/data/fft/piezo?sample_rate=${sr}&window=${win}`,
-          );
+          const fftRes = await fetch(API.FFT_PIEZO(sr, win));
           if (fftRes.ok) setPiezoFftData(await fftRes.json());
         }
 
         // --- ADXL이 켜져 있을 때 ---
         if (adxlRunning) {
           // RAW 데이터
-          const rawRes = await fetch(
-            "http://localhost:8001/api/data/latest/adxl",
-          );
+          const rawRes = await fetch(API.LATEST_ADXL);
           if (rawRes.ok) {
             const rawData = await rawRes.json();
             if (rawData.history) setAdxlData(rawData.history);
@@ -156,9 +151,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
             : uiSettings.adxl.visibleAxis.y
               ? "y"
               : "z";
-          const fftRes = await fetch(
-            `http://localhost:8001/api/data/fft/adxl?sample_rate=${sr}&axis=${axis}&window=${win}`,
-          );
+          const fftRes = await fetch(API.FFT_ADXL(sr, axis, win));
           if (fftRes.ok) setAdxlFftData(await fftRes.json());
         }
       } catch (error) {
