@@ -17,7 +17,15 @@ export const API = {
   FFT_ADXL: (sampleRate: number, axis: string, window: string) =>
     `${BASE_URL}/api/data/fft/adxl?sample_rate=${sampleRate}&axis=${axis}&window=${window}`,
 
-  // (나중에 추가될 수 있는 제어 API들 미리 만들어두기)
+  // DB 조회 API
+  DB_HISTORY: (
+    sensorType: string,
+    startIso: string,
+    endIso: string,
+    axis: string,
+  ) =>
+    `${BASE_URL}/api/db/history/${sensorType}?start_iso=${startIso}&end_iso=${endIso}&axis=${axis}`,
+
   CONTROL_START: `${BASE_URL}/api/control/start`,
   CONTROL_STOP: `${BASE_URL}/api/control/stop`,
 } as const;

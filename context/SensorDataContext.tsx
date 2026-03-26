@@ -91,6 +91,8 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const [isDbMode, setIsDbMode] = useState(false); // DB 조회 모드인지 확인하는 상태
+
   // UI 설정값 업데이트 함수
   const updatePiezoSettings = (settings: Partial<UiSettings["piezo"]>) => {
     setUiSettings((prev) => ({
@@ -106,19 +108,54 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
   const startPiezo = async () => {
     setPiezoRunning(true);
     setAdxlRunning(false);
+    setIsDbMode(false);
   };
   const stopPiezo = async () => setPiezoRunning(false);
 
   const startAdxl = async () => {
     setAdxlRunning(true);
     setPiezoRunning(false);
+    setIsDbMode(false);
   };
   const stopAdxl = async () => setAdxlRunning(false);
+
+  // DB에서 과거 데이터 가져오기 함수
+  const fetchFromDb = async (sensorType: "piezo" | "adxl", seconds: number) => {
+    try {
+      // 실시간 수집을 끄고 DB 모드로 전환
+      setPiezoRunning(false);
+      setAdxlRunning(false);
+      setIsDbMode(true);
+
+      const res = await fetch(API.DB_RECENT(sensorType, seconds));
+      if (res.ok) {
+        const dbData = await res.json();
+        // InfluxDB에서 가져온 데이터를 프론트엔드 차트 배열 형태에 맞게 변환
+        const formattedData = dbData.map((d: any) => ({
+          timestamp: new Date(d.time).getTime() / 1000,
+          value: d.value, // Piezo용
+          [d.field]: d.value, // ADXL용 (x, y, z 필드에 맞춰 자동 할당)
+        }));
+
+        if (sensorType === "piezo") setPiezoData(formattedData);
+        else setAdxlData(formattedData);
+
+        // FFT 데이터는 일단 비워두거나, 필요시 DB 데이터를 백엔드 FFT로 다시 쏠 수 있습니다.
+        setPiezoFftData([]);
+        setAdxlFftData([]);
+      }
+    } catch (e) {
+      console.error("DB Fetch Error:", e);
+    }
+  };
 
   // 6. 백엔드 통신 로직 (변경된 백엔드 API 적용)
   useEffect(() => {
     const fetchSensorData = async () => {
       try {
+        // DB 모드일 때는 실시간 폴링을 하지 않습니다!
+        if (isDbMode) return;
+
         // --- Piezo가 켜져 있을 때 ---
         if (piezoRunning) {
           // RAW 데이터
@@ -161,8 +198,8 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
 
     let intervalId: NodeJS.Timeout;
 
-    // 둘 중 하나라도 켜져 있을 때만 1초 주기로 실행
-    if (piezoRunning || adxlRunning) {
+    // 둘 중 하나라도 켜져 있을 때만 1초 주기로 실행 && DB 모드가 아닐 때만 1초마다 반복
+    if (piezoRunning || (adxlRunning && !isDbMode)) {
       fetchSensorData(); // 즉시 1회 호출
       intervalId = setInterval(fetchSensorData, 1000);
     }
@@ -171,7 +208,7 @@ export function SensorDataProvider({ children }: { children: ReactNode }) {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [piezoRunning, adxlRunning, uiSettings]); // 설정값이 변경되어도 다시 호출
+  }, [piezoRunning, adxlRunning, uiSettings, isDbMode]); // 설정값이 변경되어도 다시 호출
 
   // 7. 모든 컴포넌트에 상태 제공
   return (

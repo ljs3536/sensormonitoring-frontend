@@ -5,11 +5,18 @@ import { useState, useEffect } from "react";
 import { Play, Square, Settings } from "lucide-react";
 import { useSensorData } from "@/context/SensorDataContext";
 
+// 🌟 Props가 변경되었습니다.
 interface ControlSidebarProps {
-  type: "piezo" | "adxl";
+  activeTab: "piezo" | "adxl";
+  onTabChange: (tab: "piezo" | "adxl") => void;
 }
 
-export function ControlSidebar({ type }: ControlSidebarProps) {
+export function ControlSidebar({
+  activeTab,
+  onTabChange,
+}: ControlSidebarProps) {
+  const type = activeTab; // 코드 하단부 호환성을 위해 변수 할당
+
   const {
     uiSettings,
     updatePiezoSettings,
@@ -20,21 +27,20 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
     adxlRunning,
     startAdxl,
     stopAdxl,
+    fetchFromDb, // DB 조회 함수가 있다면 포함
   } = useSensorData();
 
   const isRunning = type === "piezo" ? piezoRunning : adxlRunning;
   const onStart = type === "piezo" ? startPiezo : startAdxl;
   const onStop = type === "piezo" ? stopPiezo : stopAdxl;
 
-  // --- 화면 임시 상태 (Apply 누르기 전) ---
   const currentSettings = uiSettings[type];
 
+  // 상태 변수들 (기존과 동일)
   const [tempSr, setTempSr] = useState(String(currentSettings.sampleRate));
-  // Window Function (옵션 B)
   const [tempWindow, setTempWindow] = useState(
     currentSettings.windowType || "hann",
   );
-  // Y-Axis Scale (옵션 A)
   const [tempYMode, setTempYMode] = useState<"auto" | "fixed">(
     currentSettings.yAxisMode || "auto",
   );
@@ -44,7 +50,6 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
   const [tempYMax, setTempYMax] = useState(
     String(currentSettings.yAxisMax || 5),
   );
-  // ADXL 전용 축 설정
   const [tempAxis, setTempAxis] = useState(
     type === "adxl" && "visibleAxis" in currentSettings
       ? currentSettings.visibleAxis.x
@@ -55,16 +60,26 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
       : "x",
   );
 
-  // 탭(type)이 바뀌면 임시 상태를 새로 갱신해줍니다.
+  // (DB 모드용 상태 - 아까 추가하신 부분 유지)
+  const [dbSeconds, setDbSeconds] = useState("30");
+
   useEffect(() => {
     setTempSr(String(uiSettings[type].sampleRate));
     setTempWindow(uiSettings[type].windowType || "hann");
     setTempYMode(uiSettings[type].yAxisMode || "auto");
     setTempYMin(String(uiSettings[type].yAxisMin || 0));
     setTempYMax(String(uiSettings[type].yAxisMax || 5));
+    if (type === "adxl" && "visibleAxis" in uiSettings.adxl) {
+      setTempAxis(
+        uiSettings.adxl.visibleAxis.x
+          ? "x"
+          : uiSettings.adxl.visibleAxis.y
+            ? "y"
+            : "z",
+      );
+    }
   }, [type, uiSettings]);
 
-  // --- 설정 적용 함수 ---
   const handleApply = () => {
     const sr = parseInt(tempSr) || 1000;
     const yMin = parseFloat(tempYMin) || 0;
@@ -95,8 +110,31 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
   };
 
   return (
-    <div className="w-80 border-r border-border bg-card p-6 flex flex-col h-full space-y-6 overflow-y-auto">
-      {/* 1. 상태 및 제어 영역 */}
+    <div className="w-80 border-r border-border bg-card p-6 flex flex-col h-full space-y-6 overflow-y-auto shrink-0">
+      {/* 🌟 1. 센서 종류 선택 탭 (페이지 상단에서 사이드바로 이사 옴!) */}
+      <div>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase mb-2">
+          센서 종류
+        </h2>
+        <div className="flex bg-muted p-1 rounded-lg">
+          <button
+            onClick={() => onTabChange("piezo")}
+            className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "piezo" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            PIEZO
+          </button>
+          <button
+            onClick={() => onTabChange("adxl")}
+            className={`flex-1 px-4 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "adxl" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            ADXL
+          </button>
+        </div>
+      </div>
+
+      <hr className="border-border" />
+
+      {/* 2. 상태 및 제어 영역 */}
       <div>
         <h2 className="text-lg font-bold mb-4">제어 패널</h2>
         <div
@@ -131,7 +169,7 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
 
       <hr className="border-border" />
 
-      {/* 2. 화면 설정 영역 */}
+      {/* 3. 화면 설정 영역 */}
       <div className="space-y-5 flex-1">
         <div className="flex items-center gap-2">
           <Settings className="w-4 h-4 text-muted-foreground" />
@@ -190,7 +228,7 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
           </div>
         )}
 
-        {/* Y-Axis Scale (Auto vs Fixed) */}
+        {/* Y-Axis Scale */}
         <div className="space-y-2 pt-2 border-t border-border">
           <label className="text-sm text-muted-foreground">
             FFT Y-Axis Scale
@@ -209,8 +247,6 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
               Fixed
             </button>
           </div>
-
-          {/* Fixed를 골랐을 때만 나타나는 Min / Max 입력칸 */}
           {tempYMode === "fixed" && (
             <div className="flex gap-2 mt-2">
               <div className="flex-1">
@@ -243,9 +279,33 @@ export function ControlSidebar({ type }: ControlSidebarProps) {
           onClick={handleApply}
           className="w-full bg-secondary text-secondary-foreground py-2.5 rounded-md text-sm font-bold hover:opacity-90 mt-6 shadow-sm"
         >
-          Apply Settings
+          설정 적용 (Apply)
         </button>
       </div>
+
+      {/* --- 🌟 DB 과거 데이터 조회 영역 (아까 추가하신 부분) --- */}
+      {fetchFromDb && (
+        <div className="pt-6 border-t border-border space-y-4">
+          <h3 className="text-md font-semibold text-primary">
+            과거 데이터 간편 조회
+          </h3>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={dbSeconds}
+              onChange={(e) => setDbSeconds(e.target.value)}
+              className="w-1/2 p-2 text-sm border border-border rounded bg-background"
+              placeholder="초(s)"
+            />
+            <button
+              onClick={() => fetchFromDb(type, parseInt(dbSeconds) || 30)}
+              className="w-1/2 bg-indigo-600 text-white py-2 rounded-md text-sm font-bold hover:bg-indigo-700 transition"
+            >
+              불러오기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

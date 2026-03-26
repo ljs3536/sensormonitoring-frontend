@@ -19,31 +19,12 @@ export default function Home() {
       : "z";
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <header className="h-16 border-b border-border bg-card flex items-center justify-between px-8 shrink-0">
-        <h1 className="text-xl font-bold text-primary tracking-tighter">
-          SENSOR MASTER
-        </h1>
-        <div className="flex bg-muted p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab("piezo")}
-            className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "piezo" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            PIEZO
-          </button>
-          <button
-            onClick={() => setActiveTab("adxl")}
-            className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === "adxl" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            ADXL
-          </button>
-        </div>
-        <div className="w-20" />
-      </header>
+    <div className="flex flex-1 overflow-hidden h-full bg-background">
+      {/* 좌측: 제어판 (여기에 탭 상태와 변경 함수를 넘겨줍니다) */}
+      <ControlSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <ControlSidebar type={activeTab} />
-
+      {/* 우측: 그래프 화면 */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {activeTab === "piezo" ? (
           <SensorView
             title="Piezo 센서"
@@ -52,7 +33,6 @@ export default function Home() {
             rawKey="value"
             color="#4f46e5"
             unit="V"
-            // 👇 사이드바에서 바꾼 값을 View로 넘겨줌!
             yMode={uiSettings.piezo.yAxisMode}
             yMin={uiSettings.piezo.yAxisMin}
             yMax={uiSettings.piezo.yAxisMax}
@@ -65,7 +45,6 @@ export default function Home() {
             rawKey={adxlSelectedAxis}
             color="#ef4444"
             unit="g"
-            // 👇 사이드바에서 바꾼 값을 View로 넘겨줌!
             yMode={uiSettings.adxl.yAxisMode}
             yMin={uiSettings.adxl.yAxisMin}
             yMax={uiSettings.adxl.yAxisMax}
