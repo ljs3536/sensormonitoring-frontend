@@ -27,7 +27,6 @@ export function ControlSidebar({
     adxlRunning,
     startAdxl,
     stopAdxl,
-    fetchFromDb, // DB 조회 함수가 있다면 포함
   } = useSensorData();
 
   const isRunning = type === "piezo" ? piezoRunning : adxlRunning;
@@ -282,30 +281,6 @@ export function ControlSidebar({
           설정 적용 (Apply)
         </button>
       </div>
-
-      {/* --- 🌟 DB 과거 데이터 조회 영역 (아까 추가하신 부분) --- */}
-      {fetchFromDb && (
-        <div className="pt-6 border-t border-border space-y-4">
-          <h3 className="text-md font-semibold text-primary">
-            과거 데이터 간편 조회
-          </h3>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              value={dbSeconds}
-              onChange={(e) => setDbSeconds(e.target.value)}
-              className="w-1/2 p-2 text-sm border border-border rounded bg-background"
-              placeholder="초(s)"
-            />
-            <button
-              onClick={() => fetchFromDb(type, parseInt(dbSeconds) || 30)}
-              className="w-1/2 bg-indigo-600 text-white py-2 rounded-md text-sm font-bold hover:bg-indigo-700 transition"
-            >
-              불러오기
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
