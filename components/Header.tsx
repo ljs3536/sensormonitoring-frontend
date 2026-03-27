@@ -30,6 +30,12 @@ export function Header() {
         >
           📚 HISTORY 기록 조회
         </button>
+        <button
+          onClick={() => router.push("/analysis")}
+          className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("/analysis") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          🧠 AI 분석
+        </button>
       </div>
       <div className="w-20" />
     </header>

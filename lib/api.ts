@@ -28,4 +28,11 @@ export const API = {
 
   CONTROL_START: `${BASE_URL}/api/control/start`,
   CONTROL_STOP: `${BASE_URL}/api/control/stop`,
+
+  // [추가] AI 서비스 관련 API
+  AI_STATUS: `${BASE_URL}/api/ai/status`,
+  AI_TRAIN: (sensorType: string, modelType: string) =>
+    `${BASE_URL}/api/ai/train/${sensorType}?model_type=${modelType}`,
+  AI_ANALYZE: (sensorType: string, modelType: string) =>
+    `${BASE_URL}/api/ai/analyze/${sensorType}?model_type=${modelType}`,
 } as const;
