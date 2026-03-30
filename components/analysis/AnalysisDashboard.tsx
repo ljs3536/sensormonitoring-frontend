@@ -115,7 +115,7 @@ export function AnalysisDashboard() {
             <select
               value={selectedModelId}
               onChange={(e) => setSelectedModelId(e.target.value)}
-              className="w-2/3 bg-muted border border-border p-3 rounded-lg text-sm outline-none"
+              className="w-2/3 bg-background border border-border p-3 rounded-lg text-sm outline-none"
               disabled={availableModels.length === 0}
             >
               {availableModels.length === 0 ? (
@@ -181,29 +181,94 @@ export function AnalysisDashboard() {
 
       {/* 분석 결과 출력 영역 */}
       {result && (
-        <div
-          className={`p-8 rounded-xl border-2 flex items-center justify-between animate-in fade-in duration-500 ${result.anomaly_score > 0.7 ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}
-        >
-          <div>
-            <h3 className="text-sm font-bold text-muted-foreground uppercase mb-1">
-              AI 판독 결과
-            </h3>
-            <p
-              className={`font-black text-3xl ${result.anomaly_score > 0.7 ? "text-red-600" : "text-green-600"}`}
-            >
-              {result.prediction === "abnormal"
-                ? "⚠️ 이상(Abnormal) 감지!"
-                : "✅ 정상(Normal) 상태"}
-            </p>
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+          {/* 1. 메인 판독 결과 배너 */}
+          <div
+            className={`p-6 rounded-xl border-2 flex items-center justify-between ${
+              result.severity === "CRITICAL"
+                ? "border-red-200"
+                : result.severity === "WARNING"
+                  ? "border-yellow-200"
+                  : "border-green-200"
+            }`}
+          >
+            <div>
+              <h3 className="text-sm font-bold text-muted-foreground uppercase mb-1">
+                AI 종합 판독 결과
+              </h3>
+              <p
+                className={`font-black text-3xl ${
+                  result.severity === "CRITICAL"
+                    ? "text-red-600"
+                    : result.severity === "WARNING"
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                }`}
+              >
+                {result.severity === "CRITICAL"
+                  ? "⚠️ 위험 (CRITICAL)"
+                  : result.severity === "WARNING"
+                    ? "⚡ 주의 (WARNING)"
+                    : "✅ 정상 (SAFE)"}
+              </p>
+              <p className="text-sm font-semibold mt-2 text-muted-foreground">
+                {result.message ||
+                  (result.prediction === "abnormal"
+                    ? "이상 징후가 감지되었습니다."
+                    : "정상적인 패턴입니다.")}
+              </p>
+            </div>
+
+            <div className="text-right">
+              <span className="text-sm font-bold text-muted-foreground uppercase block mb-1">
+                Anomaly Score
+              </span>
+              <div className="flex items-end gap-1">
+                <span
+                  className={`text-5xl font-black font-mono tracking-tighter ${
+                    result.severity === "CRITICAL"
+                      ? "text-red-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  {(result.anomaly_score * 100).toFixed(1)}
+                </span>
+                <span className="text-2xl font-bold text-muted-foreground pb-1">
+                  %
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="text-right">
-            <span className="text-sm font-bold text-muted-foreground uppercase block">
-              Anomaly Score
-            </span>
-            <span className="text-4xl font-black font-mono">
-              {(result.anomaly_score * 100).toFixed(1)}%
-            </span>
-          </div>
+
+          {/* 2. 상세 지표 (Metrics) 대시보드 */}
+          {result.raw_mse !== undefined && (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
+                <span className="text-xs font-bold text-muted-foreground uppercase mb-1">
+                  원시 복원 오차 (Raw MSE)
+                </span>
+                <span className="text-xl font-mono font-black">
+                  {result.raw_mse.toFixed(5)}
+                </span>
+              </div>
+              <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
+                <span className="text-xs font-bold text-muted-foreground uppercase mb-1">
+                  위험 임계치 (Threshold)
+                </span>
+                <span className="text-xl font-mono font-black">
+                  {result.threshold}
+                </span>
+              </div>
+              <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
+                <span className="text-xs font-bold text-muted-foreground uppercase mb-1">
+                  판단 알고리즘
+                </span>
+                <span className="text-xl font-black text-indigo-600">
+                  AutoEncoder
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

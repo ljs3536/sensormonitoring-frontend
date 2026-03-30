@@ -136,14 +136,12 @@ export function ModelManager() {
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full bg-muted p-3 rounded-lg text-sm font-bold outline-none"
+                className="w-full bg-background p-3 rounded-lg text-sm font-bold outline-none"
               >
                 <option value="AutoEncoder">
                   AutoEncoder (Anomaly Detection)
                 </option>
-                <option value="LSTM" disabled>
-                  LSTM (Future Prediction) - 준비중
-                </option>
+                <option value="CNNLSTMAutoEncoder">CNNLSTMAutoEncoder</option>
               </select>
             </div>
             <button
