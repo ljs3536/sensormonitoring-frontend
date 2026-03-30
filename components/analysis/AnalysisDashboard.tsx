@@ -1,9 +1,21 @@
 // src/components/analysis/AnalysisDashboard.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Play, Activity } from "lucide-react";
 import { API } from "@/lib/api"; // API 임포트
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Area,
+  ComposedChart,
+} from "recharts";
 
 export function AnalysisDashboard() {
   const [sensorType, setSensorType] = useState("piezo");
@@ -43,15 +55,30 @@ export function AnalysisDashboard() {
     }
   }, [sensorType, aiModels]); // aiModels나 sensorType이 변경될 때마다 재계산
 
-  // 더미 데이터 생성 기능
+  // 더미 데이터 생성 기능 (진짜 센서처럼 사인파 기반으로 변경)
   const generateDummyData = (isNormal: boolean) => {
     const data = [];
+
     for (let i = 0; i < 128; i++) {
-      const val = isNormal
-        ? Math.random() * 0.5 - 0.25
-        : Math.random() * 5 - 2.5;
+      // 1. 정상 패턴: 일정한 주기를 가진 사인파(Sine Wave) + 미세한 진동(노이즈)
+      let val = Math.sin(i * 0.2) + (Math.random() * 0.2 - 0.1);
+
+      // 2. 비정상 패턴: 특정 구간에서 파형이 완전히 망가지게 만듦
+      if (!isNormal) {
+        // 이상 케이스 A: 장비에 '쿵' 하는 큰 충격이 발생했을 때 (인덱스 50~60 구간)
+        if (i >= 50 && i <= 60) {
+          val += Math.random() * 5 + 3; // 갑자기 값이 위로 크게 솟구침
+        }
+
+        // 이상 케이스 B: 베어링 등이 마모되어 미세하고 빠른 떨림이 추가됐을 때 (인덱스 90 이후)
+        if (i > 90) {
+          val += Math.sin(i * 1.5) * 2; // 주파수가 갑자기 요동침
+        }
+      }
+
       data.push(val.toFixed(3));
     }
+
     setInputText(data.join(", "));
   };
 
@@ -90,6 +117,17 @@ export function AnalysisDashboard() {
     }
     setLoading(false);
   };
+  // 차트에 그릴 수 있도록 데이터를 변환하는 로직 (useMemo로 최적화)
+  const chartData = useMemo(() => {
+    if (!result || !result.chart_data) return [];
+
+    return result.chart_data.original.map((val: number, idx: number) => ({
+      index: idx,
+      original: val,
+      reconstructed: result.chart_data.reconstructed[idx],
+      error: result.chart_data.errors[idx],
+    }));
+  }, [result]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -266,6 +304,74 @@ export function AnalysisDashboard() {
                 <span className="text-xl font-black text-indigo-600">
                   AutoEncoder
                 </span>
+              </div>
+            </div>
+          )}
+          {/* 3. 새롭게 추가된 데이터 재구성(Reconstruction) 차트 */}
+          {chartData.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+              <div className="mb-6">
+                <h3 className="text-lg font-bold">
+                  파장 복원 분석 (Reconstruction Analysis)
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  AI가 학습한 정상 패턴(빨간색)과 실제 입력된 데이터(파란색)의
+                  차이를 보여줍니다. 차이가 클수록(회색 음영) 이상 징후일 확률이
+                  높습니다.
+                </p>
+              </div>
+
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                    <XAxis dataKey="index" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "8px",
+                        border: "none",
+                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                      }}
+                      labelStyle={{ fontWeight: "bold", color: "#666" }}
+                    />
+                    <Legend verticalAlign="top" height={36} />
+
+                    {/* 에러 발생 구간을 회색 음영으로 표시 */}
+                    <Area
+                      type="monotone"
+                      dataKey="error"
+                      fill="#e5e7eb"
+                      stroke="none"
+                      name="복원 오차(Error)"
+                      opacity={0.5}
+                    />
+
+                    {/* 실제 데이터 */}
+                    <Line
+                      type="monotone"
+                      dataKey="original"
+                      stroke="#4f46e5"
+                      strokeWidth={2}
+                      name="실제 센서 데이터"
+                      dot={false}
+                    />
+
+                    {/* AI가 복원한(기대하는) 데이터 */}
+                    <Line
+                      type="monotone"
+                      dataKey="reconstructed"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      name="AI 정상 패턴 복원"
+                      dot={false}
+                      strokeDasharray="5 5"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}
