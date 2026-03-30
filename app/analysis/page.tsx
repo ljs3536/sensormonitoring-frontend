@@ -26,6 +26,12 @@ export default function AnalysisPage() {
         >
           📊 실시간 이상 탐지 결과
         </button>
+        <button
+          onClick={() => setActiveSubTab("result")}
+          className={`py-4 text-sm font-bold border-b-2 transition-all ${activeSubTab === "result" ? "border-indigo-500 text-indigo-500" : "border-transparent text-muted-foreground"}`}
+        >
+          📊 실시간 이상 탐지 결과
+        </button>
       </div>
 
       {/* 콘텐츠 영역 */}

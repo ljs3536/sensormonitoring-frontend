@@ -1,7 +1,7 @@
 // src/components/analysis/AnalysisDashboard.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play, Activity } from "lucide-react";
 import { API } from "@/lib/api"; // API 임포트
 
@@ -10,6 +10,38 @@ export function AnalysisDashboard() {
   const [inputText, setInputText] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  // 🌟 새롭게 추가된 상태 (해당 페이지에서만 독립적으로 관리)
+  const [aiModels, setAiModels] = useState<any[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+
+  // 1. 페이지 로드 시 DB에서 전체 모델 목록 가져오기
+  const fetchAiModels = async () => {
+    try {
+      const res = await fetch(API.AI_MODELS); // api.ts에 AI_MODELS가 추가되어 있어야 합니다!
+      if (res.ok) setAiModels(await res.json());
+    } catch (e) {
+      console.error("Model fetch error:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAiModels();
+  }, []);
+
+  // 2. 현재 선택된 센서에 맞는 'READY' 상태의 모델들만 필터링
+  const availableModels = aiModels.filter(
+    (m) => m.sensor_type === sensorType && m.status === "READY",
+  );
+
+  // 3. 센서 타입이 바뀌면, 선택된 모델을 자동으로 첫 번째 모델로 세팅
+  useEffect(() => {
+    if (availableModels.length > 0) {
+      setSelectedModelId(String(availableModels[0].id));
+    } else {
+      setSelectedModelId("");
+    }
+  }, [sensorType, aiModels]); // aiModels나 sensorType이 변경될 때마다 재계산
 
   // 더미 데이터 생성 기능
   const generateDummyData = (isNormal: boolean) => {
@@ -24,6 +56,10 @@ export function AnalysisDashboard() {
   };
 
   const handlePredict = async () => {
+    if (!selectedModelId)
+      return alert(
+        "학습이 완료된(READY) 모델이 없습니다. 먼저 모델을 학습시켜주세요.",
+      );
     if (!inputText) return alert("데이터를 입력하거나 생성해주세요.");
 
     // 콤마 단위로 파싱하여 배열 생성
@@ -32,10 +68,13 @@ export function AnalysisDashboard() {
       .map((v) => parseFloat(v.trim()))
       .filter((v) => !isNaN(v));
 
+    if (dataArray.length < 128)
+      return alert("데이터가 최소 128개 이상이어야 합니다.");
+
     setLoading(true);
     try {
-      // api.ts를 활용하여 POST 요청에 데이터 바디 포함
-      const res = await fetch(API.AI_ANALYZE(sensorType, "AutoEncoder"), {
+      // 🌟 api.ts의 AI_PREDICT에 선택된 modelId를 넘겨서 호출
+      const res = await fetch(API.AI_PREDICT(Number(selectedModelId)), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dataArray),
@@ -55,19 +94,42 @@ export function AnalysisDashboard() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Activity className="text-indigo-500" /> 수동 데이터 AI 예측
             (Predict)
           </h2>
-          <select
-            value={sensorType}
-            onChange={(e) => setSensorType(e.target.value)}
-            className="bg-background border p-2 rounded-lg text-sm font-bold outline-none"
-          >
-            <option value="piezo">PIEZO 센서 예측</option>
-            <option value="adxl">ADXL 센서 예측</option>
-          </select>
+
+          {/* 센서 및 모델 선택 영역 */}
+          <div className="flex gap-4">
+            <select
+              value={sensorType}
+              onChange={(e) => setSensorType(e.target.value)}
+              className="w-1/3 bg-background border p-3 rounded-lg text-sm font-bold outline-none"
+            >
+              <option value="piezo">PIEZO 센서</option>
+              <option value="adxl">ADXL 센서</option>
+            </select>
+
+            {/* 🔥 모델 선택 드롭다운 */}
+            <select
+              value={selectedModelId}
+              onChange={(e) => setSelectedModelId(e.target.value)}
+              className="w-2/3 bg-muted border border-border p-3 rounded-lg text-sm outline-none"
+              disabled={availableModels.length === 0}
+            >
+              {availableModels.length === 0 ? (
+                <option value="">적용 가능한 READY 모델이 없습니다.</option>
+              ) : (
+                availableModels.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    ID: {model.id} - {model.model_type} (
+                    {new Date(model.created_at).toLocaleDateString()})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
         </div>
 
         {/* 데이터 입력 영역 */}
@@ -103,14 +165,15 @@ export function AnalysisDashboard() {
 
         <button
           onClick={handlePredict}
-          disabled={loading}
-          className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+          disabled={loading || !selectedModelId}
+          className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
         >
           {loading ? (
             "분석 중..."
           ) : (
             <>
-              <Play size={18} fill="currentColor" /> AI 예측 실행하기
+              <Play size={18} fill="currentColor" /> ID {selectedModelId || "?"}{" "}
+              모델로 예측 실행
             </>
           )}
         </button>

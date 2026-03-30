@@ -31,8 +31,9 @@ export const API = {
 
   // [추가] AI 서비스 관련 API
   AI_STATUS: `${BASE_URL}/api/ai/status`,
+  AI_MODELS: `${BASE_URL}/api/ai/models`, // 추가됨
   AI_TRAIN: (sensorType: string, modelType: string) =>
     `${BASE_URL}/api/ai/train/${sensorType}?model_type=${modelType}`,
-  AI_ANALYZE: (sensorType: string, modelType: string) =>
-    `${BASE_URL}/api/ai/analyze/${sensorType}?model_type=${modelType}`,
+  AI_PREDICT: (modelId: number) => `${BASE_URL}/api/ai/predict/${modelId}`,
+  AI_MODEL_DELETE: (modelId: number) => `${BASE_URL}/api/ai/models/${modelId}`,
 } as const;
