@@ -142,6 +142,7 @@ export function ModelManager() {
                   AutoEncoder (Anomaly Detection)
                 </option>
                 <option value="CNNLSTMAutoEncoder">CNNLSTMAutoEncoder</option>
+                <option value="CNNLSTM_CLASSIFIER">CNNLSTM_CLASSIFIER</option>
               </select>
             </div>
             <button
