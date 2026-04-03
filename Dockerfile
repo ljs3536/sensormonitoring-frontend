@@ -1,19 +1,19 @@
-# 1. 베이스 이미지 설정
-FROM node:18-alpine
-
-# 2. 작업 디렉토리 설정
+# 1단계: 빌드 스테이지
+FROM node:20-alpine AS builder
 WORKDIR /app
-
-# 3. 의존성 설치 (package.json 먼저 복사해서 캐시 활용)
 COPY package*.json ./
 RUN npm install
-
-# 4. 소스 복사 및 빌드
 COPY . .
 RUN npm run build
 
-# 5. 포트 설정 (Next.js 기본 3000)
-EXPOSE 3000
+# 2단계: 실행 스테이지 (빌드 결과물만 쏙 빼오기)
+FROM node:20-alpine
+WORKDIR /app
+# 빌드에 필요했던 node_modules와 소스코드는 버리고, 결과물인 .next와 public만 가져옵니다.
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/public ./public
 
-# 6. 실행 명령
+EXPOSE 3000
 CMD ["npm", "start"]

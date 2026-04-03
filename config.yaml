@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensor-config
+data:
+  MARIADB_HOST: "mariadb-svc"
+  INFLUXDB_URL: "http://influxdb-svc:8086"
+  BACKEND_URL: "http://backend-svc:8002"

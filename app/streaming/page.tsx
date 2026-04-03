@@ -70,7 +70,11 @@ function StreamingContent() {
           <SensorView
             title={`ADXL 실시간 스트림 (${adxlSelectedAxis.toUpperCase()}축)`}
             rawData={adxlStreamingData}
-            fftData={adxlFftData ? adxlFftData[adxlSelectedAxis] : []}
+            fftData={
+              adxlFftData
+                ? adxlFftData[adxlSelectedAxis as keyof typeof adxlFftData]
+                : []
+            }
             rawKey={adxlSelectedAxis}
             color="#ef4444"
             unit="g"

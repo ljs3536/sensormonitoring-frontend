@@ -45,6 +45,7 @@ export function HistorySensorView({
 
   // 툴팁에 마우스를 올렸을 때 날짜와 시각 전체를 보여주는 포맷터
   const formatTooltipTime = (label: number) => {
+    if (typeof label !== "number") return label;
     const date = new Date(label * 1000);
     return date.toLocaleString("ko-KR", { hour12: false }); // YYYY. MM. DD. HH:mm:ss
   };
@@ -102,7 +103,7 @@ export function HistorySensorView({
 
               {/* 고급 툴팁 세팅 */}
               <Tooltip
-                labelFormatter={formatTooltipTime} // 툴팁 제목을 상세 날짜로
+                labelFormatter={(value) => formatTooltipTime(Number(value))} // 툴팁 제목을 상세 날짜로
                 contentStyle={{
                   backgroundColor: "var(--card)",
                   borderColor: "var(--border)",

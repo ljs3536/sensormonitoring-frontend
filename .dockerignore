@@ -1,0 +1,31 @@
+# 1. 의존성 (가장 중요!)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 2. 빌드 결과물
+# 로컬에서 빌드한 결과물이 이미지에 들어가면 덮어쓰기 문제가 생기거나 용량을 차지합니다.
+.next/
+out/
+build/
+dist/
+
+# 3. 환경 변수 및 보안
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 4. 소스 제어 및 설정
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# 5. OS 및 에디터 관련
+.DS_Store
+.vscode/
+.idea/
