@@ -322,9 +322,7 @@ export function AnalysisDashboard() {
                 판단 알고리즘
               </span>
               <span className="text-xl font-black text-indigo-600">
-                {result.learning_type === "supervised"
-                  ? "CNN-LSTM Classifier"
-                  : "AutoEncoder"}
+                {result.model_type}
               </span>
             </div>
           </div>
