@@ -54,16 +54,24 @@ export function AnalysisDashboard() {
     }
   }, [sensorType, aiModels]);
 
+  //더미 데이터 생성 로직 수정
   const generateDummyData = (isNormal: boolean) => {
-    const data = [];
-    for (let i = 0; i < 128; i++) {
-      let val = Math.sin(i * 0.1) * 2.0 + (Math.random() * 0.2 - 0.1);
+    const data: string[] = [];
+    // ADXL이면 3축(384개), 아니면 1축(128개)
+    const totalSamples = sensorType === "adxl" ? 384 : 128;
+
+    for (let i = 0; i < totalSamples; i++) {
+      // 축별로 약간 다른 파형을 주기 위해 i % 128 사용
+      const t = i % 128;
+      let val = Math.sin(t * 0.1) * 2.0 + (Math.random() * 0.2 - 0.1);
+
       if (!isNormal) {
-        if (i >= 50 && i <= 60) {
+        // 이상 데이터: 특정 구간에 튀는 값(Spike)이나 노이즈 추가
+        if (t >= 50 && t <= 60) {
           val += Math.random() * 5 + 3;
         }
-        if (i > 90) {
-          val += Math.sin(i * 1.5) * 2;
+        if (t > 90) {
+          val += Math.sin(t * 1.5) * 2;
         }
       }
       data.push(val.toFixed(3));
@@ -83,21 +91,31 @@ export function AnalysisDashboard() {
       .map((v) => parseFloat(v.trim()))
       .filter((v) => !isNaN(v));
 
-    if (dataArray.length < 128)
-      return alert("데이터가 최소 128개 이상이어야 합니다.");
+    const requiredLength = sensorType === "adxl" ? 384 : 128;
+
+    if (dataArray.length < requiredLength) {
+      return alert(
+        `${sensorType.toUpperCase()} 분석을 위해서는 최소 ${requiredLength}개의 데이터가 필요합니다. (현재: ${dataArray.length}개)`,
+      );
+    }
 
     setLoading(true);
     try {
-      const res = await fetch(API.AI_PREDICT(Number(selectedModelId)), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataArray),
-      });
+      const res = await fetch(
+        API.AI_PREDICT(String(sensorType), Number(selectedModelId)),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dataArray),
+        },
+      );
 
       if (res.ok) {
         setResult(await res.json());
       } else {
-        alert("분석 요청 실패");
+        // 백엔드에서 온 에러 메시지가 있다면 출력
+        const errorData = await res.json();
+        alert(`분석 요청 실패: ${errorData.detail || "서버 오류"}`);
       }
     } catch (e) {
       console.error("예측 오류:", e);

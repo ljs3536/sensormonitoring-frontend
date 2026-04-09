@@ -34,6 +34,7 @@ export const API = {
   AI_MODELS: `${BASE_URL}/api/ai/models`, // 추가됨
   AI_TRAIN: (sensorType: string, modelType: string) =>
     `${BASE_URL}/api/ai/train/${sensorType}?model_type=${modelType}`,
-  AI_PREDICT: (modelId: number) => `${BASE_URL}/api/ai/predict/${modelId}`,
+  AI_PREDICT: (sensorType: string, modelId: number) =>
+    `${BASE_URL}/api/ai/predict/${sensorType}?model_id=${modelId}`,
   AI_MODEL_DELETE: (modelId: number) => `${BASE_URL}/api/ai/models/${modelId}`,
 } as const;

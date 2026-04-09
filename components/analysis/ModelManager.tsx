@@ -143,7 +143,7 @@ export function ModelManager() {
                 </option>
                 <option value="CNNLSTMAutoEncoder">CNNLSTMAutoEncoder</option>
                 <option value="CNNLSTM_CLASSIFIER">CNNLSTM_CLASSIFIER</option>
-                <option value="SPECTOGRAM_CNN">SPECTOGRAM_CNN</option>
+                <option value="SPECTROGRAM_CNN">SPECTROGRAM_CNN</option>
               </select>
             </div>
             <button
