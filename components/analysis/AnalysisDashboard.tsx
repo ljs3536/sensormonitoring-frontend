@@ -56,25 +56,43 @@ export function AnalysisDashboard() {
 
   //더미 데이터 생성 로직 수정
   const generateDummyData = (isNormal: boolean) => {
-    const data: string[] = [];
-    // ADXL이면 3축(384개), 아니면 1축(128개)
-    const totalSamples = sensorType === "adxl" ? 384 : 128;
+    const data: number[] = [];
+    const sampleCount = 128;
 
-    for (let i = 0; i < totalSamples; i++) {
-      // 축별로 약간 다른 파형을 주기 위해 i % 128 사용
-      const t = i % 128;
-      let val = Math.sin(t * 0.1) * 2.0 + (Math.random() * 0.2 - 0.1);
+    const offset = 2048;
+    const amplitude = 800;
 
+    for (let i = 0; i < sampleCount; i++) {
+      let x = offset + Math.sin(i * 0.1) * amplitude;
+      let y = offset + Math.cos(i * 0.1) * (amplitude * 0.8);
+      let z = offset + Math.sin(i * 0.05 + 1.0) * (amplitude * 0.6);
+
+      // 미세한 노이즈 추가 (에뮬레이터의 randint(-10, 10)과 유사하게)
+      x += (Math.random() - 0.5) * 20;
+      y += (Math.random() - 0.5) * 20;
+      z += (Math.random() - 0.5) * 20;
       if (!isNormal) {
-        // 이상 데이터: 특정 구간에 튀는 값(Spike)이나 노이즈 추가
-        if (t >= 50 && t <= 60) {
-          val += Math.random() * 5 + 3;
+        // 1. 단순 스파이크 대신 "완전한 패턴 붕괴" 주입
+        if (i >= 50 && i <= 80) {
+          // 사인파 대신 고주파 노이즈 + 무작위 스파이크
+          x =
+            offset + Math.sin(i * 1.5) * amplitude * 1.5 + Math.random() * 1000;
         }
-        if (t > 90) {
-          val += Math.sin(t * 1.5) * 2;
+        // 2. 전체적인 진동수 변화 (정상은 0.1인데 이상은 0.5로)
+        if (i > 100) {
+          x = offset + Math.sin(i * 0.5) * amplitude;
         }
       }
-      data.push(val.toFixed(3));
+
+      // 🌟 핵심: 백엔드와 동일하게 1000으로 나누고 소수점 4자리까지!
+      const processVal = (val: number) =>
+        parseFloat(Math.max(0, Math.min(4095, val / 1000.0)).toFixed(4));
+
+      if (sensorType === "adxl") {
+        data.push(processVal(x), processVal(y), processVal(z));
+      } else {
+        data.push(processVal(x));
+      }
     }
     setInputText(data.join(", "));
   };
