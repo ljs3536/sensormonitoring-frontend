@@ -37,4 +37,10 @@ export const API = {
   AI_PREDICT: (sensorType: string, modelId: number) =>
     `${BASE_URL}/api/ai/predict/${sensorType}?model_id=${modelId}`,
   AI_MODEL_DELETE: (modelId: number) => `${BASE_URL}/api/ai/models/${modelId}`,
+
+  // [추가] 센서 메타데이터 관리 API
+  SENSOR_LIST: `${BASE_URL}/api/sensors/`, // GET (목록 조회), POST (신규 등록)
+
+  // 기존 SNNSOR_DELETE를 SENSOR_DETAIL로 변경하여 수정(PUT)/삭제(DELETE)에 공용으로 사용
+  SENSOR_DETAIL: (id: string) => `${BASE_URL}/api/sensors/${id}`,
 } as const;
