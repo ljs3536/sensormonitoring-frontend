@@ -18,6 +18,7 @@ import {
   BarChart, // 🌟 막대그래프용 추가
   Bar,
   Cell,
+  AreaChart,
 } from "recharts";
 
 export function AnalysisDashboard() {
@@ -28,6 +29,8 @@ export function AnalysisDashboard() {
 
   const [aiModels, setAiModels] = useState<any[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [selectedSensorId, setSelectedSensorId] = useState("");
+  const [sensors, setSensors] = useState<any[]>([]);
 
   const fetchAiModels = async () => {
     try {
@@ -37,10 +40,20 @@ export function AnalysisDashboard() {
       console.error("Model fetch error:", e);
     }
   };
+  const fetchSensors = async () => {
+    const res = await fetch(API.SENSOR_LIST);
+    const data = await res.json();
+    const filtered = data.filter(
+      (s: any) => s.type === sensorType && s.is_active,
+    );
+    setSensors(filtered);
+    if (filtered.length > 0) setSelectedSensorId(filtered[0].id);
+  };
 
   useEffect(() => {
     fetchAiModels();
-  }, []);
+    fetchSensors();
+  }, [sensorType]);
 
   const availableModels = aiModels.filter(
     (m) => m.sensor_type === sensorType && m.status === "READY",
@@ -120,7 +133,11 @@ export function AnalysisDashboard() {
     setLoading(true);
     try {
       const res = await fetch(
-        API.AI_PREDICT(String(sensorType), Number(selectedModelId)),
+        API.AI_PREDICT(
+          String(sensorType),
+          Number(selectedModelId),
+          String(selectedSensorId),
+        ),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -182,41 +199,62 @@ export function AnalysisDashboard() {
   }, [result]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-card border border-border rounded-xl p-8 shadow-sm space-y-6">
-        <div className="flex flex-col gap-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Activity className="text-indigo-500" /> 수동 데이터 AI 예측
-            (Predict)
-          </h2>
-
-          <div className="flex gap-4">
-            <select
-              value={sensorType}
-              onChange={(e) => setSensorType(e.target.value)}
-              className="w-1/3 bg-background border p-3 rounded-lg text-sm font-bold outline-none"
+    <div className="space-y-6 p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-card p-6 rounded-xl border shadow-sm items-end">
+        {/* 타입 선택 */}
+        <div>
+          <label className="text-sm font-medium mb-1 block">센서 타입</label>
+          <div className="flex bg-muted p-1 rounded-lg">
+            <button
+              onClick={() => setSensorType("piezo")}
+              className={`flex-1 py-1.5 text-sm rounded-md transition ${sensorType === "piezo" ? "bg-white text-black shadow-sm font-bold" : ""}`}
             >
-              <option value="piezo">PIEZO 센서</option>
-              <option value="adxl">ADXL 센서</option>
-            </select>
-            <select
-              value={selectedModelId}
-              onChange={(e) => setSelectedModelId(e.target.value)}
-              className="w-2/3 bg-background border border-border p-3 rounded-lg text-sm outline-none"
-              disabled={availableModels.length === 0}
+              Piezo
+            </button>
+            <button
+              onClick={() => setSensorType("adxl")}
+              className={`flex-1 py-1.5 text-sm rounded-md transition ${sensorType === "adxl" ? "bg-white text-black shadow-sm font-bold" : ""}`}
             >
-              {availableModels.length === 0 ? (
-                <option value="">적용 가능한 READY 모델이 없습니다.</option>
-              ) : (
-                availableModels.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    ID: {model.id} - {model.model_type} (
-                    {new Date(model.created_at).toLocaleDateString()})
-                  </option>
-                ))
-              )}
-            </select>
+              ADXL
+            </button>
           </div>
+        </div>
+
+        {/* 🌟 센서 선택 추가 */}
+        <div>
+          <label className="text-sm font-medium mb-1 block">
+            대상 센서 (물리 정보 주입)
+          </label>
+          <select
+            value={selectedSensorId}
+            onChange={(e) => setSelectedSensorId(e.target.value)}
+            className="w-full p-2 border rounded-md bg-background"
+          >
+            {sensors.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.id})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 모델 선택 */}
+        <div>
+          <label className="text-sm font-medium mb-1 block">
+            사용할 AI 모델
+          </label>
+          <select
+            value={selectedModelId}
+            onChange={(e) => setSelectedModelId(e.target.value)}
+            className="w-full p-2 border rounded-md bg-background"
+          >
+            <option value="">모델 선택</option>
+            {aiModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.model_type} (ID: {m.id})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="space-y-3">
@@ -274,7 +312,9 @@ export function AnalysisDashboard() {
                 AI 종합 판독 결과 (
                 {result.learning_type === "supervised"
                   ? "지도학습/분류"
-                  : "비지도학습/이상탐지"}
+                  : result.learning_type === "pinn"
+                    ? "물리기반/이상탐지"
+                    : "비지도학습/이상탐지"}
                 )
               </h3>
               <p
@@ -295,19 +335,26 @@ export function AnalysisDashboard() {
               <span className="text-sm font-bold text-muted-foreground uppercase block mb-1">
                 {result.learning_type === "supervised"
                   ? "AI 확신도 (Confidence)"
-                  : "이상 점수 (Anomaly Score)"}
+                  : result.learning_type === "pinn"
+                    ? "물리 손실 (Physics Loss)"
+                    : "이상 점수 (Anomaly Score)"}
               </span>
-              <div className="flex items-end gap-1">
+              <div className="flex items-end gap-1 justify-end">
                 <span
                   className={`text-5xl font-black font-mono tracking-tighter ${result.severity === "CRITICAL" ? "text-red-600" : "text-green-600"}`}
                 >
                   {result.learning_type === "supervised"
                     ? (result.confidence * 100).toFixed(1)
-                    : (result.anomaly_score * 100).toFixed(1)}
+                    : result.learning_type === "pinn"
+                      ? result.physics_loss?.toFixed(2)
+                      : (result.anomaly_score * 100).toFixed(1)}
                 </span>
-                <span className="text-2xl font-bold text-muted-foreground pb-1">
-                  %
-                </span>
+                {/* 물리 손실은 %가 아니므로 숨김 처리 */}
+                {result.learning_type !== "pinn" && (
+                  <span className="text-2xl font-bold text-muted-foreground pb-1">
+                    %
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -330,6 +377,25 @@ export function AnalysisDashboard() {
                   </span>
                   <span className="text-xl font-mono font-black">
                     {result.threshold}
+                  </span>
+                </div>
+              </>
+            ) : result.learning_type === "pinn" ? (
+              <>
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
+                  <span className="text-xs font-bold text-muted-foreground uppercase mb-1">
+                    원시 복원 오차 (Raw MSE)
+                  </span>
+                  <span className="text-xl font-mono font-black">
+                    {result.raw_mse?.toFixed(5)}
+                  </span>
+                </div>
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
+                  <span className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1">
+                    방정식 위반도 (Physics Loss)
+                  </span>
+                  <span className="text-xl font-mono font-black text-orange-600">
+                    {result.physics_loss?.toFixed(5)}
                   </span>
                 </div>
               </>
@@ -414,7 +480,97 @@ export function AnalysisDashboard() {
               </div>
             )}
 
-          {/* 4. [지도 학습] 확률 분포 막대그래프 & 원본 파장 */}
+          {/* 4. [PINN 학습] 복원 차트 + 물리 잔차 차트 분할 */}
+          {result.learning_type === "pinn" &&
+            result.chart_data &&
+            (() => {
+              // PINN 전용 차트 데이터 인라인 매핑
+              const pinnChartData = result.chart_data.original.map(
+                (val: number, idx: number) => ({
+                  index: idx,
+                  original: val,
+                  reconstructed: result.chart_data.reconstructed[idx],
+                  physics_error: result.chart_data.physics_errors[idx] || 0,
+                }),
+              );
+
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* 왼쪽: 데이터 복원 차트 */}
+                  <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-bold">
+                        파장 복원 (Data Recon)
+                      </h3>
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart
+                          data={pinnChartData}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis dataKey="index" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip contentStyle={{ borderRadius: "8px" }} />
+                          <Legend verticalAlign="top" height={36} />
+                          <Line
+                            type="monotone"
+                            dataKey="original"
+                            stroke="#4f46e5"
+                            strokeWidth={2}
+                            name="실제 데이터"
+                            dot={false}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="reconstructed"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            name="PINN 복원"
+                            dot={false}
+                            strokeDasharray="5 5"
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* 오른쪽: 물리 잔차(방정식 위반) 차트 */}
+                  <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-bold text-orange-600">
+                        물리 잔차 (Physics Residuals)
+                      </h3>
+                    </div>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                          data={pinnChartData}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                          <XAxis dataKey="index" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip contentStyle={{ borderRadius: "8px" }} />
+                          <Legend verticalAlign="top" height={36} />
+                          <Area
+                            type="monotone"
+                            dataKey="physics_error"
+                            stroke="#ea580c"
+                            fill="#fdba74"
+                            name="방정식 위반도"
+                            opacity={0.8}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+          {/* 5. [지도 학습] 확률 분포 막대그래프 & 원본 파장 */}
           {result.learning_type === "supervised" && (
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-card border border-border rounded-xl p-6 shadow-sm">

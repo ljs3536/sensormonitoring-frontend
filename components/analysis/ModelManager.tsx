@@ -9,10 +9,27 @@ export function ModelManager() {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("AutoEncoder");
+  const [sensorType, setSensorType] = useState("piezo");
 
   // 🌟 추가된 상태: 모델 목록 및 선택된 모델 ID 관리
   const [models, setModels] = useState<any[]>([]);
   const [checkedIds, setCheckedIds] = useState<number[]>([]);
+
+  // 🌟 추가: 센서 목록 및 선택된 센서 상태
+  const [sensors, setSensors] = useState<any[]>([]);
+  const [selectedSensorId, setSelectedSensorId] = useState<string>("");
+
+  // 센서 목록 가져오기
+  const fetchSensors = async () => {
+    try {
+      const res = await fetch(API.SENSOR_LIST);
+      const data = await res.json();
+      // 현재 선택된 타입(piezo/adxl)에 맞는 센서만 필터링
+      setSensors(data.filter((s: any) => s.type === sensorType && s.is_active));
+    } catch (e) {
+      console.error("센서 로드 실패", e);
+    }
+  };
 
   // 시스템 전반적인 상태 조회
   const fetchStatus = async () => {
@@ -34,10 +51,12 @@ export function ModelManager() {
     }
   };
 
-  const handleTrain = async (sensorType: string) => {
+  const handleTrain = async () => {
     setLoading(true);
     try {
-      await fetch(API.AI_TRAIN(sensorType, selectedModel), { method: "POST" });
+      await fetch(API.AI_TRAIN(sensorType, selectedModel, selectedSensorId), {
+        method: "POST",
+      });
       alert(`${sensorType} (${selectedModel}) 학습이 시작되었습니다!`);
       fetchStatus();
       fetchModels(); // 학습 시작 후 목록 즉시 갱신
@@ -87,74 +106,78 @@ export function ModelManager() {
   useEffect(() => {
     fetchStatus();
     fetchModels();
-
+    fetchSensors();
     // 학습 중일 때는 상태가 변할 수 있으므로 5초마다 갱신 (선택 사항)
     const timer = setInterval(() => {
       fetchStatus();
       fetchModels();
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [sensorType]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-10">
-      {/* --- 상단: 시스템 상태 --- */}
-      <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <RefreshCw
-            className={
-              status?.status === "training"
-                ? "animate-spin text-yellow-500"
-                : "text-green-500"
-            }
-            size={20}
-          />
-          현재 AI 엔진 상태:{" "}
-          <span className="text-indigo-500 uppercase">
-            {status?.status || "Unknown"}
-          </span>
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          마지막 학습 시간: {status?.last_trained || "기록 없음"}
-        </p>
-      </div>
-
-      {/* --- 중단: 새 모델 생성 폼 --- */}
-      <div className="grid grid-cols-2 gap-6">
-        {["piezo", "adxl"].map((type) => (
-          <div
-            key={type}
-            className="bg-card border border-border rounded-xl p-6 space-y-4"
-          >
-            <h4 className="font-bold uppercase text-primary text-lg">
-              {type} 센서 학습
-            </h4>
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground uppercase font-semibold">
-                알고리즘
-              </label>
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full bg-background p-3 rounded-lg text-sm font-bold outline-none"
-              >
-                <option value="AutoEncoder">
-                  AutoEncoder (Anomaly Detection)
-                </option>
-                <option value="CNNLSTMAutoEncoder">CNNLSTMAutoEncoder</option>
-                <option value="CNNLSTM_CLASSIFIER">CNNLSTM_CLASSIFIER</option>
-                <option value="SPECTROGRAM_CNN">SPECTROGRAM_CNN</option>
-              </select>
-            </div>
-            <button
-              onClick={() => handleTrain(type)}
-              disabled={loading || status?.status === "training"}
-              className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+    <div className="space-y-6">
+      <div className="bg-card p-6 rounded-xl border shadow-sm">
+        <h3 className="text-lg font-bold mb-4">신규 모델 학습 요청</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          {/* 타입 선택 */}
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              데이터 타입
+            </label>
+            <select
+              value={sensorType}
+              onChange={(e) => setSensorType(e.target.value)}
+              className="w-full p-2 border rounded-md bg-background"
             >
-              <PlayCircle size={20} /> 새 모델 데이터 학습 시작
-            </button>
+              <option value="piezo">Piezo (진동)</option>
+              <option value="adxl">ADXL (가속도)</option>
+            </select>
           </div>
-        ))}
+
+          {/* 🌟 센서 선택 추가 */}
+          <div>
+            <label className="text-sm font-medium mb-1 block">
+              학습 타겟 센서 (Optional)
+            </label>
+            <select
+              value={selectedSensorId}
+              onChange={(e) => setSelectedSensorId(e.target.value)}
+              className="w-full p-2 border rounded-md bg-background"
+            >
+              <option value="">전체 데이터 학습</option>
+              {sensors.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.id})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-1 block">알고리즘</label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="w-full p-2 border rounded-md bg-background"
+            >
+              <option value="AutoEncoder">AutoEncoder</option>
+              <option value="CNNLSTM_Classifier">CNN-LSTM Classifier</option>
+              <option value="PINN_CNNLSTMAutoEncoder">
+                PINN_CNNLSTMAutoEncoder
+              </option>
+            </select>
+          </div>
+
+          <button
+            onClick={handleTrain}
+            disabled={loading}
+            className="flex items-center justify-center gap-2 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+          >
+            <PlayCircle size={18} />
+            {loading ? "요청 중..." : "학습 시작"}
+          </button>
+        </div>
       </div>
 
       {/* --- 하단: 생성된 모델 관리 리스트 --- */}

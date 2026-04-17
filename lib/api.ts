@@ -32,10 +32,10 @@ export const API = {
   // [추가] AI 서비스 관련 API
   AI_STATUS: `${BASE_URL}/api/ai/status`,
   AI_MODELS: `${BASE_URL}/api/ai/models`, // 추가됨
-  AI_TRAIN: (sensorType: string, modelType: string) =>
-    `${BASE_URL}/api/ai/train/${sensorType}?model_type=${modelType}`,
-  AI_PREDICT: (sensorType: string, modelId: number) =>
-    `${BASE_URL}/api/ai/predict/${sensorType}?model_id=${modelId}`,
+  AI_TRAIN: (sensorType: string, modelType: string, sensorId?: string) =>
+    `${BASE_URL}/api/ai/train/${sensorType}?model_type=${modelType}${sensorId ? `&sensor_id=${sensorId}` : ""}`,
+  AI_PREDICT: (sensorType: string, modelId: number, sensorId?: string) =>
+    `${BASE_URL}/api/ai/predict/${sensorType}?model_id=${modelId}${sensorId ? `&sensor_id=${sensorId}` : ""}`,
   AI_MODEL_DELETE: (modelId: number) => `${BASE_URL}/api/ai/models/${modelId}`,
 
   // [추가] 센서 메타데이터 관리 API
