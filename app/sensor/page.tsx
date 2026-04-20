@@ -11,6 +11,10 @@ interface Sensor {
   type: string;
   sampling_rate: number;
   location?: string;
+  physics_k: number;
+  physics_c: number;
+  physics_m: number;
+  ambient_temp: number;
   is_active: boolean;
 }
 
@@ -162,6 +166,50 @@ export default function SensorManagementPage() {
             required
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">K</label>
+          <input
+            type="number"
+            name="physics_k"
+            value={formData.physics_k || 0.5}
+            onChange={handleInputChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">C</label>
+          <input
+            type="number"
+            name="physics_c"
+            value={formData.physics_c || 0.01}
+            onChange={handleInputChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">M</label>
+          <input
+            type="number"
+            name="physics_m"
+            value={formData.physics_m || 1.0}
+            onChange={handleInputChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">온도</label>
+          <input
+            type="number"
+            name="ambient_temp"
+            value={formData.ambient_temp || 25}
+            onChange={handleInputChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
         <div className="col-span-2 flex items-center mt-4">
           <input
             type="checkbox"
@@ -203,6 +251,10 @@ export default function SensorManagementPage() {
               <th className="p-4">이름</th>
               <th className="p-4">타입</th>
               <th className="p-4">Hz</th>
+              <th className="p-4">k</th>
+              <th className="p-4">c</th>
+              <th className="p-4">m</th>
+              <th className="p-4">temp</th>
               <th className="p-4">상태</th>
               <th className="p-4">관리</th>
             </tr>
@@ -214,6 +266,10 @@ export default function SensorManagementPage() {
                 <td className="p-4">{sensor.name}</td>
                 <td className="p-4 uppercase">{sensor.type}</td>
                 <td className="p-4">{sensor.sampling_rate}</td>
+                <td className="p-4">{sensor.physics_k}</td>
+                <td className="p-4">{sensor.physics_c}</td>
+                <td className="p-4">{sensor.physics_m}</td>
+                <td className="p-4">{sensor.ambient_temp}</td>
                 <td className="p-4">
                   <span
                     className={`px-2 py-1 rounded text-xs text-white ${sensor.is_active ? "bg-green-500" : "bg-red-500"}`}
