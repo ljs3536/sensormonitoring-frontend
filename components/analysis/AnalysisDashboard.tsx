@@ -19,6 +19,7 @@ import {
   Bar,
   Cell,
   AreaChart,
+  ReferenceLine,
 } from "recharts";
 
 export function AnalysisDashboard() {
@@ -68,45 +69,64 @@ export function AnalysisDashboard() {
   }, [sensorType, aiModels]);
 
   //더미 데이터 생성 로직 수정
+  // AnalysisDashboard.tsx 내부의 함수 수정
+
   const generateDummyData = (isNormal: boolean) => {
     const data: number[] = [];
     const sampleCount = 128;
+    const offset = 2.0; // 2048 / 1000.0 (정규화된 기준점)
+    const baseAmplitude = 0.8;
 
-    const offset = 2048;
-    const amplitude = 800;
+    // 1. 현재 선택된 센서의 물리 계수 가져오기
+    const currentSensor = sensors.find((s) => s.id === selectedSensorId);
+
+    // DB에서 가져온 k, c가 있다면 사용하고, 없으면 기본값 사용
+    // k가 높을수록 주파수가 빨라지고, c가 높을수록 진폭 변화가 안정적이거나 감쇠됨을 시뮬레이션
+    let k = currentSensor?.k || 0.25;
+    let c = currentSensor?.c || 0.01;
+
+    // 이상 데이터일 경우: 물리 법칙을 무시하고 계수를 비정상적으로 뒤틀음
+    if (!isNormal) {
+      k = k * 2.5; // 주파수가 갑자기 2.5배 빨라짐 (강성 변화 시뮬레이션)
+      c = c * 5.0; // 감쇠가 너무 심해짐
+    }
+
+    // 주파수 계산 (k의 제곱근에 비례하는 물리적 특성 반영)
+    const frequency = 0.5 * Math.sqrt(k);
 
     for (let i = 0; i < sampleCount; i++) {
-      let x = offset + Math.sin(i * 0.1) * amplitude;
-      let y = offset + Math.cos(i * 0.1) * (amplitude * 0.8);
-      let z = offset + Math.sin(i * 0.05 + 1.0) * (amplitude * 0.6);
+      // 2. 물리 기반 합성파 생성 (Damped Harmonic Motion의 단순화 버전)
+      // x(t) = A * sin(wt) * exp(-ct)
+      let val =
+        offset +
+        Math.sin(i * frequency) * baseAmplitude * Math.exp(-c * (i / 10));
 
-      // 미세한 노이즈 추가 (에뮬레이터의 randint(-10, 10)과 유사하게)
-      x += (Math.random() - 0.5) * 20;
-      y += (Math.random() - 0.5) * 20;
-      z += (Math.random() - 0.5) * 20;
+      // 노이즈 추가
+      val += (Math.random() - 0.5) * 0.02;
+
       if (!isNormal) {
-        // 1. 단순 스파이크 대신 "완전한 패턴 붕괴" 주입
-        if (i >= 50 && i <= 80) {
-          // 사인파 대신 고주파 노이즈 + 무작위 스파이크
-          x =
-            offset + Math.sin(i * 1.5) * amplitude * 1.5 + Math.random() * 1000;
-        }
-        // 2. 전체적인 진동수 변화 (정상은 0.1인데 이상은 0.5로)
-        if (i > 100) {
-          x = offset + Math.sin(i * 0.5) * amplitude;
+        // 이상 징후: 특정 구간에서 물리 계수와 상관없는 '패턴 붕괴' 주입
+        if (i > 60 && i < 90) {
+          val += (Math.random() - 0.5) * 0.5; // 불규칙한 진동(Impulse)
         }
       }
 
-      // 🌟 핵심: 백엔드와 동일하게 1000으로 나누고 소수점 4자리까지!
-      const processVal = (val: number) =>
-        parseFloat(Math.max(0, Math.min(4095, val / 1000.0)).toFixed(4));
-
+      // ADXL일 경우 3축 데이터 생성 (서로 다른 위상차 부여)
       if (sensorType === "adxl") {
-        data.push(processVal(x), processVal(y), processVal(z));
+        const y =
+          offset + Math.cos(i * frequency * 0.8) * (baseAmplitude * 0.7);
+        const z =
+          offset + Math.sin(i * frequency * 1.2 + 0.5) * (baseAmplitude * 0.5);
+        data.push(
+          parseFloat(val.toFixed(4)),
+          parseFloat(y.toFixed(4)),
+          parseFloat(z.toFixed(4)),
+        );
       } else {
-        data.push(processVal(x));
+        data.push(parseFloat(val.toFixed(4)));
       }
     }
+
     setInputText(data.join(", "));
   };
 
@@ -225,6 +245,25 @@ export function AnalysisDashboard() {
           <label className="text-sm font-medium mb-1 block">
             대상 센서 (물리 정보 주입)
           </label>
+          {/* 센서 선택 셀렉트 박스 아래에 추가 */}
+          {selectedSensorId && (
+            <div className="mt-2 text-[10px] text-muted-foreground flex gap-3">
+              <span>
+                설정된 강성(k):{" "}
+                <strong>
+                  {sensors.find((s) => s.id === selectedSensorId)?.physics_k ||
+                    0.25}
+                </strong>
+              </span>
+              <span>
+                설정된 감쇠(c):{" "}
+                <strong>
+                  {sensors.find((s) => s.id === selectedSensorId)?.physics_c ||
+                    0.01}
+                </strong>
+              </span>
+            </div>
+          )}
           <select
             value={selectedSensorId}
             onChange={(e) => setSelectedSensorId(e.target.value)}
@@ -336,7 +375,7 @@ export function AnalysisDashboard() {
                 {result.learning_type === "supervised"
                   ? "AI 확신도 (Confidence)"
                   : result.learning_type === "pinn"
-                    ? "물리 손실 (Physics Loss)"
+                    ? "시스템 건전도 (Integrity)"
                     : "이상 점수 (Anomaly Score)"}
               </span>
               <div className="flex items-end gap-1 justify-end">
@@ -346,15 +385,12 @@ export function AnalysisDashboard() {
                   {result.learning_type === "supervised"
                     ? (result.confidence * 100).toFixed(1)
                     : result.learning_type === "pinn"
-                      ? result.physics_loss?.toFixed(2)
+                      ? result.integrity.toFixed(1)
                       : (result.anomaly_score * 100).toFixed(1)}
                 </span>
-                {/* 물리 손실은 %가 아니므로 숨김 처리 */}
-                {result.learning_type !== "pinn" && (
-                  <span className="text-2xl font-bold text-muted-foreground pb-1">
-                    %
-                  </span>
-                )}
+                <span className="text-2xl font-bold text-muted-foreground pb-1">
+                  %
+                </span>
               </div>
             </div>
           </div>
@@ -382,20 +418,40 @@ export function AnalysisDashboard() {
               </>
             ) : result.learning_type === "pinn" ? (
               <>
-                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center">
                   <span className="text-xs font-bold text-muted-foreground uppercase mb-1">
-                    원시 복원 오차 (Raw MSE)
+                    평균 물리 손실
+                  </span>
+                  <span className="text-xl font-mono font-black">
+                    {result.physics_loss?.toFixed(5)}
+                  </span>
+                </div>
+
+                {/* 🌟 핵심: 최대 잔차 지표 추가 */}
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center border-orange-200">
+                  <span className="text-xs font-bold text-orange-600 uppercase mb-1">
+                    최대 물리 잔차 (Peak)
+                  </span>
+                  <span className="text-2xl font-mono font-black text-orange-600">
+                    {result.physics_loss_max?.toFixed(5) || "0.00000"}
+                  </span>
+                </div>
+
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center border-orange-200">
+                  <span className="text-xs font-bold text-green-600 uppercase mb-1">
+                    잔차의 불규칙성
+                  </span>
+                  <span className="text-2xl font-mono font-black text-green-600">
+                    {result.physics_loss_std?.toFixed(5) || "0.00000"}
+                  </span>
+                </div>
+
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col items-center">
+                  <span className="text-xs font-bold text-muted-foreground uppercase mb-1">
+                    복원 오차 (MSE)
                   </span>
                   <span className="text-xl font-mono font-black">
                     {result.raw_mse?.toFixed(5)}
-                  </span>
-                </div>
-                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-center items-center">
-                  <span className="text-xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1">
-                    방정식 위반도 (Physics Loss)
-                  </span>
-                  <span className="text-xl font-mono font-black text-orange-600">
-                    {result.physics_loss?.toFixed(5)}
                   </span>
                 </div>
               </>
@@ -552,8 +608,21 @@ export function AnalysisDashboard() {
                           <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                           <XAxis dataKey="index" tick={{ fontSize: 12 }} />
                           <YAxis tick={{ fontSize: 12 }} />
+
                           <Tooltip contentStyle={{ borderRadius: "8px" }} />
+
                           <Legend verticalAlign="top" height={36} />
+                          <ReferenceLine
+                            y={0.15}
+                            label={{
+                              value: "주의 임계치",
+                              position: "right",
+                              fill: "#f97316",
+                              fontSize: 10,
+                            }}
+                            stroke="#f97316"
+                            strokeDasharray="3 3"
+                          />
                           <Area
                             type="monotone"
                             dataKey="physics_error"
