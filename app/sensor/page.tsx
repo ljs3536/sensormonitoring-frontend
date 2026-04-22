@@ -11,16 +11,21 @@ interface Sensor {
   type: string;
   sampling_rate: number;
   location?: string;
+  threshold_min: number;
+  threshold_max: number;
   physics_k: number;
   physics_c: number;
   physics_m: number;
   ambient_temp: number;
+  recommended_k: number;
+  recommended_c: number;
+  recommended_threshold: number;
+  last_calibrated_at: Date;
   is_active: boolean;
 }
 
 export default function SensorManagementPage() {
   const [sensors, setSensors] = useState<Sensor[]>([]);
-
   const [isEditing, setIsEditing] = useState(false);
 
   const initialFormState: Partial<Sensor> = {
@@ -35,6 +40,7 @@ export default function SensorManagementPage() {
     try {
       const res = await fetch(API.SENSOR_LIST);
       const data = await res.json();
+      console.log(data);
       setSensors(data);
     } catch (error) {
       console.error("센서 데이터를 불러오는 중 오류 발생:", error);
@@ -50,14 +56,12 @@ export default function SensorManagementPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value, type } = e.target;
-
     let parsedValue: any = value;
 
-    // 타입에 맞춰 안전하게 데이터 변환
     if (type === "checkbox") {
       parsedValue = (e.target as HTMLInputElement).checked;
     } else if (type === "number") {
-      parsedValue = value === "" ? "" : Number(value); // 빈 값 처리 및 숫자 변환
+      parsedValue = value === "" ? "" : Number(value);
     }
 
     setFormData({
@@ -70,11 +74,7 @@ export default function SensorManagementPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // API 객체를 활용하여 URL 결정
-    const url = isEditing
-      ? API.SENSOR_DETAIL(formData.id!) // 수정 시
-      : API.SENSOR_LIST; // 신규 등록 시
-
+    const url = isEditing ? API.SENSOR_DETAIL(formData.id!) : API.SENSOR_LIST;
     const method = isEditing ? "PUT" : "POST";
 
     try {
@@ -86,8 +86,7 @@ export default function SensorManagementPage() {
 
       if (res.ok) {
         alert(`센서가 성공적으로 ${isEditing ? "수정" : "등록"}되었습니다.`);
-        setFormData(initialFormState); // 수정: 성공 후 다시 기본값으로 리셋
-        setIsEditing(false);
+        setFormData(initialFormState);
         fetchSensors();
       } else {
         alert("처리에 실패했습니다. 입력값을 확인해주세요.");
@@ -101,7 +100,6 @@ export default function SensorManagementPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("정말 이 센서를 삭제하시겠습니까?")) return;
     try {
-      // API 객체를 활용하여 URL 결정
       await fetch(API.SENSOR_DETAIL(id), { method: "DELETE" });
       fetchSensors();
     } catch (error) {
@@ -109,7 +107,7 @@ export default function SensorManagementPage() {
     }
   };
 
-  // 🌟 최적화(Auto-tune) 처리 및 사용자 승인 로직
+  // 최적화(Auto-tune) 처리
   const AutotuneSensor = async (sensor: Sensor) => {
     if (
       !confirm(
@@ -119,28 +117,16 @@ export default function SensorManagementPage() {
       return;
 
     try {
-      // 1. 센서 ID와 Type을 함께 넘겨줍니다.
       const res = await fetch(API.AI_AUTOTUNE(sensor.id, sensor.type), {
         method: "POST",
       });
       const result = await res.json();
 
       if (res.ok && result.status === "success") {
-        // 2. AI가 리턴한 추천값을 사용자에게 보여주고 적용 여부를 묻습니다.
-        const msg = `✅ AI 분석 완료!\n\n현재 값 -> K: ${sensor.physics_k}, C: ${sensor.physics_c}\n추천 값 -> K: ${result.suggested_k}, C: ${result.suggested_c}\n\n이 추천값을 수정 폼에 적용하시겠습니까?`;
-
-        if (confirm(msg)) {
-          // 3. '확인'을 누르면 추천값을 폼(Form) 데이터에 덮어씌우고 편집 모드로 전환합니다.
-          setFormData({
-            ...sensor,
-            physics_k: result.suggested_k,
-            physics_c: result.suggested_c,
-          });
-          setIsEditing(true);
-
-          // 화면을 위(폼 위치)로 부드럽게 스크롤해줍니다.
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
+        alert(
+          ` AI 분석 완료!\n추천 값이 센서 정보에 저장되었습니다. 수정 버튼을 눌러 확인하세요.`,
+        );
+        fetchSensors(); // 목록을 새로고침하여 DB에 저장된 추천값을 갱신합니다.
       } else {
         alert(`최적화 실패: ${result.message || "알 수 없는 오류"}`);
       }
@@ -159,6 +145,46 @@ export default function SensorManagementPage() {
         onSubmit={handleSubmit}
         className="bg-white text-black p-6 rounded-lg shadow-md mb-8 grid grid-cols-2 gap-4"
       >
+        {/* AI 튜닝 리포트 배너 (수정 모드 & 추천값이 있을 때만 표시) */}
+        {isEditing && formData.recommended_k != null && (
+          <div className="col-span-2 bg-blue-50 border border-blue-200 text-blue-900 p-4 rounded-lg mb-2 flex justify-between items-center shadow-sm">
+            <div>
+              <h4 className="font-bold text-blue-800 flex items-center gap-2">
+                💡 AI 튜닝 리포트
+                <span className="text-xs font-normal text-blue-600">
+                  (마지막 분석:{" "}
+                  {formData.last_calibrated_at
+                    ? new Date(formData.last_calibrated_at).toLocaleString()
+                    : "최근"}
+                  )
+                </span>
+              </h4>
+              <p className="text-sm mt-1">
+                AI가 데이터를 분석한 결과, 이 배관에 적합한 물리 특성은{" "}
+                <strong>
+                  K: {formData.recommended_k}, C: {formData.recommended_c},
+                  THRESHOLD: {formData.recommended_threshold}
+                </strong>{" "}
+                로 예측되었습니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setFormData({
+                  ...formData,
+                  physics_k: formData.recommended_k,
+                  physics_c: formData.recommended_c,
+                  threshold_max: formData.recommended_threshold,
+                });
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow transition-colors"
+            >
+              추천 값으로 덮어쓰기
+            </button>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium mb-1">센서 ID</label>
           <input
@@ -167,7 +193,7 @@ export default function SensorManagementPage() {
             value={formData.id || ""}
             onChange={handleInputChange}
             disabled={isEditing}
-            className="w-full border p-2 rounded"
+            className="w-full border p-2 rounded bg-gray-50 disabled:text-gray-500"
             required
           />
         </div>
@@ -188,7 +214,8 @@ export default function SensorManagementPage() {
             name="type"
             value={formData.type || "piezo"}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded"
+            disabled={isEditing}
+            className="w-full border p-2 rounded bg-gray-50 disabled:text-gray-500"
           >
             <option value="piezo">Piezo (진동)</option>
             <option value="adxl">ADXL (가속도)</option>
@@ -208,31 +235,60 @@ export default function SensorManagementPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">K</label>
+          <label className="block text-sm font-medium mb-1">
+            THRESHOLD_MIN
+          </label>
           <input
             type="number"
+            name="threshold_min"
+            value={formData.threshold_min || 0}
+            onChange={handleInputChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            THRESHOLD_MAX
+          </label>
+          <input
+            type="number"
+            name="threshold_max"
+            value={formData.threshold_max || 2.0}
+            onChange={handleInputChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">강성 (K)</label>
+          <input
+            type="number"
+            step="0.0001"
             name="physics_k"
             value={formData.physics_k || 0.5}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded"
+            className="w-full border p-2 rounded focus:ring-2"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">C</label>
+          <label className="block text-sm font-medium mb-1">감쇠 (C)</label>
           <input
             type="number"
+            step="0.0001"
             name="physics_c"
             value={formData.physics_c || 0.01}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded"
+            className="w-full border p-2 rounded focus:ring-2"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">M</label>
+          <label className="block text-sm font-medium mb-1">질량 (M)</label>
           <input
             type="number"
+            step="0.1"
             name="physics_m"
             value={formData.physics_m || 1.0}
             onChange={handleInputChange}
@@ -257,14 +313,14 @@ export default function SensorManagementPage() {
             name="is_active"
             checked={formData.is_active !== false}
             onChange={handleInputChange}
-            className="mr-2"
+            className="mr-2 w-4 h-4 text-blue-600"
           />
           <label className="text-sm font-medium">활성화 여부</label>
         </div>
-        <div className="col-span-2 mt-4">
+        <div className="col-span-2 mt-4 flex gap-2">
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition-colors"
           >
             {isEditing ? "수정 완료" : "신규 등록"}
           </button>
@@ -273,9 +329,9 @@ export default function SensorManagementPage() {
               type="button"
               onClick={() => {
                 setIsEditing(false);
-                setFormData({});
+                setFormData(initialFormState);
               }}
-              className="ml-2 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+              className="bg-gray-400 text-white px-6 py-2 rounded font-bold hover:bg-gray-500 transition-colors"
             >
               취소
             </button>
@@ -291,58 +347,62 @@ export default function SensorManagementPage() {
               <th className="p-4">ID</th>
               <th className="p-4">이름</th>
               <th className="p-4">타입</th>
-              <th className="p-4">Hz</th>
               <th className="p-4">k</th>
               <th className="p-4">c</th>
-              <th className="p-4">m</th>
-              <th className="p-4">temp</th>
+              <th className="p-4">AI 추천 상태</th>
               <th className="p-4">상태</th>
-              <th className="p-4">관리</th>
+              <th className="p-4 text-center">관리</th>
             </tr>
           </thead>
           <tbody>
             {sensors.map((sensor) => (
-              <tr key={sensor.id} className="border-t">
+              <tr key={sensor.id} className="border-t hover:bg-gray-50">
                 <td className="p-4 font-medium">{sensor.id}</td>
                 <td className="p-4">{sensor.name}</td>
                 <td className="p-4 uppercase">{sensor.type}</td>
-                <td className="p-4">{sensor.sampling_rate}</td>
-                <td className="p-4">{sensor.physics_k}</td>
-                <td className="p-4">{sensor.physics_c}</td>
-                <td className="p-4">{sensor.physics_m}</td>
-                <td className="p-4">{sensor.ambient_temp}</td>
+                <td className="p-4 font-mono">{sensor.physics_k}</td>
+                <td className="p-4 font-mono">{sensor.physics_c}</td>
+                <td className="p-4">
+                  {sensor.recommended_k ? (
+                    <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                      분석 완료
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  )}
+                </td>
                 <td className="p-4">
                   <span
-                    className={`px-2 py-1 rounded text-xs text-white ${sensor.is_active ? "bg-green-500" : "bg-red-500"}`}
+                    className={`px-2 py-1 rounded text-xs text-white font-bold ${sensor.is_active ? "bg-green-500" : "bg-red-500"}`}
                   >
                     {sensor.is_active ? "ON" : "OFF"}
                   </span>
                 </td>
-                <td className="p-4">
+                <td className="p-4 flex gap-2 justify-center">
                   <button
                     type="button"
                     onClick={() => {
                       setFormData(sensor);
                       setIsEditing(true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    className="bg-gray-600 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-700 transition"
                   >
                     수정
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(sensor.id)}
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                    className="bg-red-500 text-white px-3 py-1.5 rounded text-sm hover:bg-red-600 transition"
                   >
                     삭제
                   </button>
-                  {/* 🌟 클릭 시 센서 전체 객체를 넘겨주도록 변경 */}
                   <button
                     type="button"
                     onClick={() => AutotuneSensor(sensor)}
-                    className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 font-bold"
+                    className="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-700 font-bold transition flex items-center gap-1 shadow-sm"
                   >
-                    ⚡ 최적화
+                    AI 튜닝
                   </button>
                 </td>
               </tr>

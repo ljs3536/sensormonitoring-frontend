@@ -68,9 +68,6 @@ export function AnalysisDashboard() {
     }
   }, [sensorType, aiModels]);
 
-  //더미 데이터 생성 로직 수정
-  // AnalysisDashboard.tsx 내부의 함수 수정
-
   const generateDummyData = (isNormal: boolean) => {
     const data: number[] = [];
     const sampleCount = 128;
@@ -80,49 +77,85 @@ export function AnalysisDashboard() {
     // 1. 현재 선택된 센서의 물리 계수 가져오기
     const currentSensor = sensors.find((s) => s.id === selectedSensorId);
 
-    // DB에서 가져온 k, c가 있다면 사용하고, 없으면 기본값 사용
-    // k가 높을수록 주파수가 빨라지고, c가 높을수록 진폭 변화가 안정적이거나 감쇠됨을 시뮬레이션
-    let k = currentSensor?.k || 0.25;
-    let c = currentSensor?.c || 0.01;
+    const k = currentSensor?.physics_k || 0.5;
+    const c = currentSensor?.physics_c || 0.01;
 
-    // 이상 데이터일 경우: 물리 법칙을 무시하고 계수를 비정상적으로 뒤틀음
-    if (!isNormal) {
-      k = k * 2.5; // 주파수가 갑자기 2.5배 빨라짐 (강성 변화 시뮬레이션)
-      c = c * 5.0; // 감쇠가 너무 심해짐
-    }
+    // 2. 완벽한 물리 공식 (자유 감쇠 진동) 파라미터 세팅
+    const damping = c / 2.0;
+    const omega_d = Math.sqrt(Math.max(0.0001, k - Math.pow(damping, 2)));
 
-    // 주파수 계산 (k의 제곱근에 비례하는 물리적 특성 반영)
-    const frequency = 0.5 * Math.sqrt(k);
+    // 이상 데이터용 붕괴 파라미터 (강성 k를 4배로 튀게 만들어 공식을 파괴함)
+    const broken_k = k * 4.0;
+    const broken_omega = Math.sqrt(broken_k);
+    const broken_damping = 0.0001; // 감쇠를 없애서 잔차가 계속 요동치게 만듦
 
     for (let i = 0; i < sampleCount; i++) {
-      // 2. 물리 기반 합성파 생성 (Damped Harmonic Motion의 단순화 버전)
-      // x(t) = A * sin(wt) * exp(-ct)
-      let val =
-        offset +
-        Math.sin(i * frequency) * baseAmplitude * Math.exp(-c * (i / 10));
+      let val = offset;
+      const noise = (Math.random() - 0.5) * 0.02; // 백색 소음
 
-      // 노이즈 추가
-      val += (Math.random() - 0.5) * 0.02;
+      if (isNormal) {
+        // ✅ 정상: PINN 모델이 알고 있는 k, c를 완벽히 따르는 수식
+        val +=
+          baseAmplitude * Math.exp(-damping * i) * Math.sin(omega_d * i) +
+          noise;
+      } else {
+        // ❌ 이상: 모델의 공식을 완전히 어긋나는 고주파 파동 주입
+        val +=
+          baseAmplitude *
+            1.5 *
+            Math.exp(-broken_damping * i) *
+            Math.sin(broken_omega * i) +
+          noise;
 
-      if (!isNormal) {
-        // 이상 징후: 특정 구간에서 물리 계수와 상관없는 '패턴 붕괴' 주입
-        if (i > 60 && i < 90) {
-          val += (Math.random() - 0.5) * 0.5; // 불규칙한 진동(Impulse)
+        // 구조적 파괴 (Impulse 충격) - 중앙 차분법 미분 시 Peak 값이 폭발하도록 유도
+        if (i > 70 && i < 75) {
+          val += (Math.random() - 0.5) * 1.5;
         }
       }
 
-      // ADXL일 경우 3축 데이터 생성 (서로 다른 위상차 부여)
+      // ADXL일 경우 3축 데이터 생성 (각 축별 위상차 부여)
       if (sensorType === "adxl") {
-        const y =
-          offset + Math.cos(i * frequency * 0.8) * (baseAmplitude * 0.7);
-        const z =
-          offset + Math.sin(i * frequency * 1.2 + 0.5) * (baseAmplitude * 0.5);
+        let y = offset;
+        let z = offset;
+
+        if (isNormal) {
+          y +=
+            baseAmplitude *
+              0.8 *
+              Math.exp(-damping * i) *
+              Math.sin(omega_d * i + 1.0) +
+            noise;
+          z +=
+            baseAmplitude *
+              0.6 *
+              Math.exp(-damping * i) *
+              Math.sin(omega_d * i + 2.0) +
+            noise;
+        } else {
+          y +=
+            baseAmplitude *
+              1.5 *
+              Math.exp(-broken_damping * i) *
+              Math.sin(broken_omega * i + 1.5) +
+            noise;
+          z +=
+            baseAmplitude *
+              1.5 *
+              Math.exp(-broken_damping * i) *
+              Math.sin(broken_omega * i + 3.0) +
+            noise;
+          if (i > 70 && i < 75) {
+            y += (Math.random() - 0.5) * 1.5;
+            z += (Math.random() - 0.5) * 1.5;
+          }
+        }
         data.push(
           parseFloat(val.toFixed(4)),
           parseFloat(y.toFixed(4)),
           parseFloat(z.toFixed(4)),
         );
       } else {
+        // Piezo일 경우 1축 데이터 생성
         data.push(parseFloat(val.toFixed(4)));
       }
     }
@@ -209,7 +242,7 @@ export function AnalysisDashboard() {
     }));
   }, [result]);
 
-  // 🌟 [지도 학습용] 입력 원본 데이터 단순 출력용
+  // [지도 학습용] 입력 원본 데이터 단순 출력용
   const originalChartData = useMemo(() => {
     if (!result || !result.chart_data?.original) return [];
     return result.chart_data.original.map((val: number, idx: number) => ({
@@ -240,7 +273,7 @@ export function AnalysisDashboard() {
           </div>
         </div>
 
-        {/* 🌟 센서 선택 추가 */}
+        {/* 센서 선택 추가 */}
         <div>
           <label className="text-sm font-medium mb-1 block">
             대상 센서 (물리 정보 주입)
