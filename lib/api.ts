@@ -37,7 +37,8 @@ export const API = {
   AI_PREDICT: (sensorType: string, modelId: number, sensorId?: string) =>
     `${BASE_URL}/api/ai/predict/${sensorType}?model_id=${modelId}${sensorId ? `&sensor_id=${sensorId}` : ""}`,
   AI_MODEL_DELETE: (modelId: number) => `${BASE_URL}/api/ai/models/${modelId}`,
-
+  AI_AUTOTUNE: (id: string, type: string) =>
+    `${BASE_URL}/api/ai/${id}/auto_tune?sensor_type=${type}`,
   // [추가] 센서 메타데이터 관리 API
   SENSOR_LIST: `${BASE_URL}/api/sensors/`, // GET (목록 조회), POST (신규 등록)
 

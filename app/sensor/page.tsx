@@ -109,6 +109,47 @@ export default function SensorManagementPage() {
     }
   };
 
+  // 🌟 최적화(Auto-tune) 처리 및 사용자 승인 로직
+  const AutotuneSensor = async (sensor: Sensor) => {
+    if (
+      !confirm(
+        `[${sensor.name}] 센서의 데이터를 기반으로 최적의 K, C 값을 찾으시겠습니까?\n(데이터량에 따라 1~2분 소요될 수 있습니다)`,
+      )
+    )
+      return;
+
+    try {
+      // 1. 센서 ID와 Type을 함께 넘겨줍니다.
+      const res = await fetch(API.AI_AUTOTUNE(sensor.id, sensor.type), {
+        method: "POST",
+      });
+      const result = await res.json();
+
+      if (res.ok && result.status === "success") {
+        // 2. AI가 리턴한 추천값을 사용자에게 보여주고 적용 여부를 묻습니다.
+        const msg = `✅ AI 분석 완료!\n\n현재 값 -> K: ${sensor.physics_k}, C: ${sensor.physics_c}\n추천 값 -> K: ${result.suggested_k}, C: ${result.suggested_c}\n\n이 추천값을 수정 폼에 적용하시겠습니까?`;
+
+        if (confirm(msg)) {
+          // 3. '확인'을 누르면 추천값을 폼(Form) 데이터에 덮어씌우고 편집 모드로 전환합니다.
+          setFormData({
+            ...sensor,
+            physics_k: result.suggested_k,
+            physics_c: result.suggested_c,
+          });
+          setIsEditing(true);
+
+          // 화면을 위(폼 위치)로 부드럽게 스크롤해줍니다.
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      } else {
+        alert(`최적화 실패: ${result.message || "알 수 없는 오류"}`);
+      }
+    } catch (error) {
+      console.error("최적화 중 오류 발생:", error);
+      alert("서버와 통신하는 중 오류가 발생했습니다.");
+    }
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">센서 메타데이터 관리</h1>
@@ -294,6 +335,14 @@ export default function SensorManagementPage() {
                     className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
                   >
                     삭제
+                  </button>
+                  {/* 🌟 클릭 시 센서 전체 객체를 넘겨주도록 변경 */}
+                  <button
+                    type="button"
+                    onClick={() => AutotuneSensor(sensor)}
+                    className="bg-green-600 text-white px-3 py-1.5 rounded text-sm hover:bg-green-700 font-bold"
+                  >
+                    ⚡ 최적화
                   </button>
                 </td>
               </tr>
