@@ -22,31 +22,31 @@ export function Header() {
           onClick={() => router.push("/")}
           className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${!isHistory ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
-          📡 REALTIME 모니터링
+          REALTIME 모니터링
         </button>
         <button
           onClick={() => router.push("/history")}
           className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${isHistory ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
-          📚 HISTORY 기록 조회
+          HISTORY 기록 조회
         </button>
         <button
           onClick={() => router.push("/analysis")}
           className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("/analysis") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
-          🧠 AI 분석
+          AI 분석
         </button>
         <button
           onClick={() => router.push("/streaming")}
           className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("/streaming") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
-          🧠 STREAMING 실시간 센서 데이터 조회
+          STREAMING 실시간 센서 데이터 조회
         </button>
         <button
           onClick={() => router.push("/sensor")}
           className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("/sensor") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
-          🧠 SENSOR 관리
+          SENSOR 관리
         </button>
       </div>
       <div className="w-20" />
