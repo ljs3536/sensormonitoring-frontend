@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { API } from "@/lib/api"; // api.ts 연동[cite: 2]
 
 // 부모 컴포넌트(page.tsx)에서 받을 props 정의
@@ -16,7 +16,18 @@ export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
   const [probMax, setProbMax] = useState("500");
   const [startDate, setStartDate] = useState("2026-05-06T02:09");
   const [endDate, setEndDate] = useState("2026-05-06T15:09");
-
+  const [sensorType, setSensorType] = useState("piezo");
+  const [sensors, setSensors] = useState<any[]>([]);
+  const fetchSensors = async () => {
+    try {
+      const res = await fetch(API.SENSOR_LIST);
+      const data = await res.json();
+      // 현재 선택된 타입(piezo/adxl)에 맞는 센서만 필터링
+      setSensors(data.filter((s: any) => s.type === sensorType && s.is_active));
+    } catch (e) {
+      console.error("센서 로드 실패", e);
+    }
+  };
   // 모델 갱신 API 호출 핸들러
   const handleTrainModel = async () => {
     try {
@@ -47,6 +58,10 @@ export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
       console.error("검색 에러:", error);
     }
   };
+
+  useEffect(() => {
+    fetchSensors();
+  }, [sensorType]);
   return (
     <div className="flex flex-col gap-4 text-sm">
       {/* 1. 상단 필터 영역 */}
@@ -59,8 +74,11 @@ export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
             value={macAddr}
             onChange={(e) => setMacAddr(e.target.value)}
           >
-            <option value="piezo_01">누출테스트</option>
-            <option value="piezo_02">기타 센서</option>
+            {sensors.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} ({s.id})
+              </option>
+            ))}
           </select>
 
           <label className="font-bold w-20 text-right">누출여부</label>
