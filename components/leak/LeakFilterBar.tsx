@@ -6,16 +6,17 @@ import { API } from "@/lib/api"; // api.ts 연동[cite: 2]
 // 부모 컴포넌트(page.tsx)에서 받을 props 정의
 interface LeakFilterBarProps {
   onSearch: (data: any[]) => void;
+  onPredict: () => void; // 🌟 추가
 }
 
-export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
+export function LeakFilterBar({ onSearch, onPredict }: LeakFilterBarProps) {
   // 필터 상태 관리
   const [macAddr, setMacAddr] = useState("누출테스트");
   const [leakStatus, setLeakStatus] = useState("전체");
   const [probMin, setProbMin] = useState("0");
   const [probMax, setProbMax] = useState("500");
-  const [startDate, setStartDate] = useState("2026-05-06T02:09");
-  const [endDate, setEndDate] = useState("2026-05-06T15:09");
+  const [startDate, setStartDate] = useState("2026-05-07T02:09");
+  const [endDate, setEndDate] = useState("2026-05-07T15:09");
   const [sensorType, setSensorType] = useState("piezo");
   const [sensors, setSensors] = useState<any[]>([]);
   const fetchSensors = async () => {
@@ -31,11 +32,22 @@ export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
   // 모델 갱신 API 호출 핸들러
   const handleTrainModel = async () => {
     try {
-      // 기존 API.AI_TRAIN을 활용하거나 새로운 RDB 전용 갱신 API 호출[cite: 2]
-      // const res = await fetch(API.AI_TRAIN("piezo", "prototypical"));
-      alert("AI 누출확률 계산 모델 갱신을 요청했습니다.");
+      // sensor_id는 현재 선택된 센서 ID (예: "piezo_01")
+      const res = await fetch(API.TRAIN_PROTO_MODEL(macAddr), {
+        method: "POST", // 🚨 반드시 POST로 설정해야 합니다!
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+      } else {
+        console.error("훈련 요청 실패:", res.status);
+      }
     } catch (error) {
-      console.error("모델 갱신 실패:", error);
+      console.error("네트워크 에러:", error);
     }
   };
 
@@ -44,7 +56,7 @@ export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
     try {
       // API.SENSOR_LEAK_LIST는 api.ts에 정의되어 있어야 합니다.
       const res = await fetch(
-        API.SENSOR_LEAK_LIST(macAddr, leakStatus, startDate, endDate),
+        API.SENSOR_PROTO_LIST(macAddr, leakStatus, startDate, endDate),
         { method: "GET" },
       );
       if (res.ok) {
@@ -134,6 +146,13 @@ export function LeakFilterBar({ onSearch }: LeakFilterBarProps) {
       {/* 2. 하단 버튼 영역 */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
+          {/* 🌟 예측 버튼 추가 */}
+          <button
+            onClick={onPredict}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded shadow"
+          >
+            선택 데이터 AI 예측
+          </button>
           <button className="bg-red-500 text-white px-4 py-1 rounded">
             누출처리
           </button>

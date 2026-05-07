@@ -32,7 +32,55 @@ export default function LeakDashboard() {
     setSelectedIds([]); // 검색 시 선택 초기화
     setSelectedRecords([]);
   };
+  // 🌟 AI 예측 실행 함수
+  const handlePredict = async () => {
+    if (selectedIds.length === 0) {
+      alert("예측할 데이터를 좌측 리스트에서 선택해주세요.");
+      return;
+    }
 
+    // 선택된 데이터 중 첫 번째 레코드의 맥주소를 가져옵니다. (단일 맥주소 검색을 가정)
+    // 참고: LeakRecord 인터페이스에 mac_addr이 없다면 추가해주셔야 합니다.
+    const targetRecord = leakData.find((r) => r.seq === selectedIds[0]);
+    if (!targetRecord) return;
+
+    try {
+      const res = await fetch(API.PREDICT_PROTO_MODEL("normal"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seq_list: selectedIds,
+          mac_addr: targetRecord.mac_addr || "piezo_01", // DB 조회용 맥주소
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const updatedResults = data.updated_data; // 백엔드에서 보내준 업데이트된 배열
+
+        // 🌟 화면 새로고침 없이, 현재 leakData 상태에서 예측된 항목들만 값 변경
+        const newData = leakData.map((item) => {
+          const updated = updatedResults.find((u: any) => u.seq === item.seq);
+          if (updated) {
+            return {
+              ...item,
+              leakProbability: updated.leakProbability, // 0.00 -> 85.50 변경
+              leakageFirst: updated.leakageFirst, // N -> Y 변경
+              analysis: "분석완료", // 대기 -> 분석완료 변경
+            };
+          }
+          return item;
+        });
+
+        setLeakData(newData);
+        alert("AI 예측이 완료되었습니다!");
+      } else {
+        alert("예측 요청 중 오류가 발생했습니다.");
+      }
+    } catch (error) {
+      console.error("예측 에러:", error);
+    }
+  };
   // 💡 [핵심] 체크박스 선택이 변경되었을 때 Detail 호출하기
   const handleSelectionChange = async (newSelectedIds: number[]) => {
     setSelectedIds(newSelectedIds);
@@ -53,7 +101,7 @@ export default function LeakDashboard() {
           try {
             // seq와 mac_addr를 넘겨서 상세 조회
             const res = await fetch(
-              API.SENSOR_LEAK_DETAIL(seq, basicInfo.mac_addr),
+              API.SENSOR_PROTO_DETAIL(seq, basicInfo.mac_addr),
             );
             if (res.ok) {
               const detailData = await res.json();
@@ -78,7 +126,7 @@ export default function LeakDashboard() {
     <div className="flex flex-col h-screen p-4 bg-background gap-4">
       <section className="flex-none bg-white p-4 rounded shadow-sm">
         {/* 검색 컴포넌트에 onSearch 함수 전달 */}
-        <LeakFilterBar onSearch={handleSearch} />
+        <LeakFilterBar onSearch={handleSearch} onPredict={handlePredict} />
       </section>
 
       <section className="flex flex-1 gap-4 overflow-hidden">
