@@ -44,4 +44,13 @@ export const API = {
 
   // 기존 SNNSOR_DELETE를 SENSOR_DETAIL로 변경하여 수정(PUT)/삭제(DELETE)에 공용으로 사용
   SENSOR_DETAIL: (id: string) => `${BASE_URL}/api/sensors/${id}`,
+
+  SENSOR_LEAK_LIST: (mac: string, leakYn: string, start: string, end: string) =>
+    `${BASE_URL}/api/leak/list?mac_addr=${mac}&leak_yn=${leakYn}&start_dt=${start}&end_dt=${end}`,
+
+  SENSOR_LEAK_DETAIL: (seq: number, mac: string) =>
+    `${BASE_URL}/api/leak/${seq}?mac_addr=${mac}`,
+
+  TRAIN_MODEL: (sensorType: string) =>
+    `${BASE_URL}/api/leak/train/${sensorType}`,
 } as const;
