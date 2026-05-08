@@ -56,8 +56,8 @@ export const API = {
   SENSOR_PROTO_DETAIL: (seq: number, mac: string) =>
     `${BASE_URL}/api/proto/${seq}?mac_addr=${mac}`,
 
-  TRAIN_PROTO_MODEL: (sensorId: string) =>
-    `${BASE_URL}/api/proto/train/${sensorId}`,
-  PREDICT_PROTO_MODEL: (type: string) =>
-    `${BASE_URL}/api/proto/predict/${type}`,
+  TRAIN_PROTO_MODEL: (sensorId: string, modelType: string) =>
+    `${BASE_URL}/api/proto/train/${sensorId}?model_type=${modelType}`,
+  PREDICT_PROTO_MODEL: (modelType: string) =>
+    `${BASE_URL}/api/proto/predict/${modelType}`,
 } as const;

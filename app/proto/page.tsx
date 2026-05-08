@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { LeakFilterBar } from "@/components/leak/LeakFilterBar";
-import { SensorList, LeakRecord } from "@/components/leak/SensorList";
-import { SensorView } from "@/components/leak/SensorView";
+import { ProtoFilterBar } from "@/components/proto/ProtoFilterBar";
+import { SensorList, LeakRecord } from "@/components/proto/SensorList";
+import { SensorView } from "@/components/proto/SensorView";
 import { API } from "@/lib/api";
 
 export default function LeakDashboard() {
@@ -16,6 +16,9 @@ export default function LeakDashboard() {
   // 3. SensorView(그래프)에 넘겨줄 상세 데이터(sensorDataStr 포함) 배열
   const [selectedRecords, setSelectedRecords] = useState<LeakRecord[]>([]);
 
+  const [selectedModelType, setSelectedModelType] = useState<"all" | "few">(
+    "all",
+  );
   // 검색 버튼을 눌렀을 때 실행되는 함수
   const handleSearch = (data: any[]) => {
     // 백엔드 데이터 포맷을 프론트엔드 인터페이스(LeakRecord)에 맞게 매핑
@@ -45,7 +48,7 @@ export default function LeakDashboard() {
     if (!targetRecord) return;
 
     try {
-      const res = await fetch(API.PREDICT_PROTO_MODEL("normal"), {
+      const res = await fetch(API.PREDICT_PROTO_MODEL(selectedModelType), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -126,7 +129,12 @@ export default function LeakDashboard() {
     <div className="flex flex-col h-screen p-4 bg-background gap-4">
       <section className="flex-none bg-white p-4 rounded shadow-sm">
         {/* 검색 컴포넌트에 onSearch 함수 전달 */}
-        <LeakFilterBar onSearch={handleSearch} onPredict={handlePredict} />
+        <ProtoFilterBar
+          onSearch={handleSearch}
+          onPredict={handlePredict}
+          selectedModelType={selectedModelType}
+          onModelTypeChange={setSelectedModelType}
+        />
       </section>
 
       <section className="flex flex-1 gap-4 overflow-hidden">

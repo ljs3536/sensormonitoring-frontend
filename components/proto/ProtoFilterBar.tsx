@@ -7,9 +7,16 @@ import { API } from "@/lib/api"; // api.ts 연동[cite: 2]
 interface LeakFilterBarProps {
   onSearch: (data: any[]) => void;
   onPredict: () => void; // 🌟 추가
+  selectedModelType: "all" | "few"; // 🌟 추가
+  onModelTypeChange: (type: "all" | "few") => void;
 }
 
-export function LeakFilterBar({ onSearch, onPredict }: LeakFilterBarProps) {
+export function ProtoFilterBar({
+  onSearch,
+  onPredict,
+  selectedModelType,
+  onModelTypeChange,
+}: LeakFilterBarProps) {
   // 필터 상태 관리
   const [macAddr, setMacAddr] = useState("누출테스트");
   const [leakStatus, setLeakStatus] = useState("전체");
@@ -33,12 +40,15 @@ export function LeakFilterBar({ onSearch, onPredict }: LeakFilterBarProps) {
   const handleTrainModel = async () => {
     try {
       // sensor_id는 현재 선택된 센서 ID (예: "piezo_01")
-      const res = await fetch(API.TRAIN_PROTO_MODEL(macAddr), {
-        method: "POST", // 🚨 반드시 POST로 설정해야 합니다!
-        headers: {
-          "Content-Type": "application/json",
+      const res = await fetch(
+        API.TRAIN_PROTO_MODEL(macAddr, selectedModelType),
+        {
+          method: "POST", // 🚨 반드시 POST로 설정해야 합니다!
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (res.ok) {
         const data = await res.json();
@@ -146,6 +156,16 @@ export function LeakFilterBar({ onSearch, onPredict }: LeakFilterBarProps) {
       {/* 2. 하단 버튼 영역 */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
+          {/* 🌟 모델 선택 드롭다운 */}
+          <select
+            value={selectedModelType}
+            onChange={(e) => onModelTypeChange(e.target.value as "all" | "few")}
+            className="border border-gray-300 rounded px-2 py-1 text-black bg-white"
+          >
+            <option value="all">All-Shot 모델 (전체평균)</option>
+            <option value="few">Few-Shot 모델 (5개추출)</option>
+          </select>
+
           {/* 🌟 예측 버튼 추가 */}
           <button
             onClick={onPredict}
