@@ -219,6 +219,7 @@ export default function SensorManagementPage() {
           >
             <option value="piezo">Piezo (진동)</option>
             <option value="adxl">ADXL (가속도)</option>
+            <option value="normal">초음파</option>
           </select>
         </div>
         <div>
