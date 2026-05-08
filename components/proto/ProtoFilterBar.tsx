@@ -17,21 +17,43 @@ export function ProtoFilterBar({
   selectedModelType,
   onModelTypeChange,
 }: LeakFilterBarProps) {
+  const getTodayWithTime = (timeString: string) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0"); // 월은 0부터 시작하므로 +1, 두자리수 맞춤
+    const day = String(today.getDate()).padStart(2, "0"); // 두자리수 맞춤
+
+    return `${year}-${month}-${day}T${timeString}`;
+  };
+
   // 필터 상태 관리
   const [macAddr, setMacAddr] = useState("누출테스트");
   const [leakStatus, setLeakStatus] = useState("전체");
   const [probMin, setProbMin] = useState("0");
   const [probMax, setProbMax] = useState("500");
-  const [startDate, setStartDate] = useState("2026-05-07T02:09");
-  const [endDate, setEndDate] = useState("2026-05-07T15:09");
-  const [sensorType, setSensorType] = useState("piezo");
+  const [startDate, setStartDate] = useState(getTodayWithTime("09:00"));
+  const [endDate, setEndDate] = useState(getTodayWithTime("18:00"));
+  const [sensorType, setSensorType] = useState("normal");
   const [sensors, setSensors] = useState<any[]>([]);
   const fetchSensors = async () => {
     try {
       const res = await fetch(API.SENSOR_LIST);
       const data = await res.json();
       // 현재 선택된 타입(piezo/adxl)에 맞는 센서만 필터링
-      setSensors(data.filter((s: any) => s.type === sensorType && s.is_active));
+      // 1. 현재 선택된 타입(piezo/adxl 등)에 맞는 센서만 필터링
+      const filteredSensors = data.filter(
+        (s: any) => s.type === sensorType && s.is_active,
+      );
+
+      // 2. 상태에 저장
+      setSensors(filteredSensors);
+
+      if (filteredSensors.length > 0) {
+        setMacAddr(filteredSensors[0].id);
+      } else {
+        // 만약 조건에 맞는 센서가 아예 없다면 초기화
+        setMacAddr("");
+      }
     } catch (e) {
       console.error("센서 로드 실패", e);
     }
