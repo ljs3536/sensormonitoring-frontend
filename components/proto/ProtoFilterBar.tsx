@@ -178,16 +178,6 @@ export function ProtoFilterBar({
       {/* 2. 하단 버튼 영역 */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2">
-          {/* 🌟 모델 선택 드롭다운 */}
-          <select
-            value={selectedModelType}
-            onChange={(e) => onModelTypeChange(e.target.value as "all" | "few")}
-            className="border border-gray-300 rounded px-2 py-1 text-black bg-white"
-          >
-            <option value="all">All-Shot 모델 (전체평균)</option>
-            <option value="few">Few-Shot 모델 (5개추출)</option>
-          </select>
-
           {/* 🌟 예측 버튼 추가 */}
           <button
             onClick={onPredict}
@@ -229,7 +219,16 @@ export function ProtoFilterBar({
       </div>
 
       {/* 3. 모델 갱신 버튼 (우측 정렬) */}
-      <div className="flex justify-end mt-2">
+      <div className="flex justify-end mt-4 items-stretch gap-2">
+        {/* 🌟 모델 선택 드롭다운 */}
+        <select
+          value={selectedModelType}
+          onChange={(e) => onModelTypeChange(e.target.value as "all" | "few")}
+          className="border border-gray-300 rounded px-2 py-1 text-black bg-white"
+        >
+          <option value="all">All-Shot 모델 (전체평균)</option>
+          <option value="few">Few-Shot 모델 (5개추출)</option>
+        </select>
         <button
           onClick={handleTrainModel}
           className="bg-green-700 hover:bg-green-800 text-white font-bold px-6 py-2 rounded shadow"
