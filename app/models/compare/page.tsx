@@ -8,19 +8,27 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
-import { Bar } from "react-chartjs-2";
+import { Bar, Scatter } from "react-chartjs-2";
+import annotationPlugin from "chartjs-plugin-annotation";
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
+  Filler,
+  annotationPlugin,
 );
 
 export default function ComparePage() {
@@ -95,6 +103,41 @@ export default function ComparePage() {
       },
     ],
   };
+  // PCA 차트 데이터 세팅
+  const getPcaData = (model: any, color: string) => {
+    const points2d = model?.eval_metrics?.pca_2d_points || [];
+    const center2d = model?.eval_metrics?.pca_2d_center || [0, 0];
+
+    return {
+      datasets: [
+        {
+          label: "학습 데이터",
+          data: points2d.map((p: number[]) => ({ x: p[0], y: p[1] })),
+          backgroundColor: color,
+          pointRadius: 3,
+        },
+        {
+          label: "중심점",
+          data: [{ x: center2d[0], y: center2d[1] }],
+          backgroundColor: "#ef4444",
+          pointRadius: 8,
+          pointStyle: "crossRot",
+          borderColor: "#ef4444",
+          borderWidth: 2,
+        },
+      ],
+    };
+  };
+
+  const pcaOptions: any = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: { grid: { color: "#e5e7eb" } },
+      y: { grid: { color: "#e5e7eb" } },
+    },
+    plugins: { legend: { position: "top" as const } },
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto text-black">
@@ -154,6 +197,32 @@ export default function ComparePage() {
               {modelB.eval_metrics?.anomaly_limit_3sigma?.toFixed(5)}
             </li>
           </ul>
+        </div>
+      </div>
+
+      {/* PCA 2D 산점도 나란히 비교 영역  */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow-lg border">
+          <h2 className="text-lg font-bold mb-2 text-blue-600">
+            🌐 Model A 잠재 공간 (PCA)
+          </h2>
+          <div style={{ height: "300px" }}>
+            <Scatter
+              data={getPcaData(modelA, "rgba(59, 130, 246, 0.5)")}
+              options={pcaOptions}
+            />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-lg border">
+          <h2 className="text-lg font-bold mb-2 text-red-600">
+            🌐 Model B 잠재 공간 (PCA)
+          </h2>
+          <div style={{ height: "300px" }}>
+            <Scatter
+              data={getPcaData(modelB, "rgba(239, 68, 68, 0.5)")}
+              options={pcaOptions}
+            />
+          </div>
         </div>
       </div>
 

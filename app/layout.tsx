@@ -21,11 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={inter.className}>
+      <body className="flex flex-col h-screen overflow-hidden bg-black text-white">
         <SensorDataProvider>
           <div className="flex flex-col h-screen overflow-hidden">
             <Header />
-            <div className="flex-1 overflow-hidden">{children}</div>
+            <div className="flex-1 overflow-y-auto">{children}</div>
           </div>
         </SensorDataProvider>
       </body>
