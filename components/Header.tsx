@@ -52,7 +52,13 @@ export function Header() {
           onClick={() => router.push("/proto")}
           className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("/proto") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
-          누출데이터 관리
+          proto Dashboard
+        </button>
+        <button
+          onClick={() => router.push("/models")}
+          className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("/models") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          proto 모델관리
         </button>
       </div>
       <div className="w-20" />

@@ -48,7 +48,7 @@ export default function LeakDashboard() {
     if (!targetRecord) return;
 
     try {
-      const res = await fetch(API.PREDICT_PROTO_MODEL(selectedModelType), {
+      const res = await fetch(API.PREDICT_PROTO_MODEL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
