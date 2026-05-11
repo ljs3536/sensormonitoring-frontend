@@ -63,4 +63,8 @@ export const API = {
   PROTO_MODEL_LIST: `${BASE_URL}/api/proto/models`,
   ACTIVATE_MODEL: (modelId: number) =>
     `${BASE_URL}/api/proto/models/${modelId}/activate`,
+
+  MODEL_DETAIL: (modelId: number) => `${BASE_URL}/api/proto/models/${modelId}`,
+  MODEL_STATS: (modelId: number) =>
+    `${BASE_URL}/api/proto/models/${modelId}/stats`,
 } as const;

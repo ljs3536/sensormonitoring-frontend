@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { API } from "@/lib/api";
 
 interface ModelData {
@@ -17,6 +18,24 @@ interface ModelData {
 export default function ModelRegistryPage() {
   const [models, setModels] = useState<ModelData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
+
+  //선택된 모델 ID들을 저장할 상태 추가
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  //체크박스 토글 함수 (최대 2개까지만 선택 가능하게 제한)
+  const handleSelect = (id: number) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter((selectedId) => selectedId !== id));
+    } else {
+      if (selectedIds.length >= 2) {
+        alert("비교는 최대 2개의 모델만 가능합니다.");
+        return;
+      }
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
 
   const fetchModels = async () => {
     try {
@@ -64,18 +83,46 @@ export default function ModelRegistryPage() {
     }
   };
 
+  // 상세 페이지로 이동하는 함수 생성
+  const goToDetailPage = (modelId: number) => {
+    // router.push()를 쓰면 브라우저 주소창이 '/models/5' 이런 식으로 바뀝니다!
+    router.push(`/models/${modelId}`);
+  };
+
+  //비교 페이지로 이동하는 함수
+  const goToComparePage = () => {
+    if (selectedIds.length !== 2) {
+      alert("비교할 모델을 정확히 2개 선택해 주세요.");
+      return;
+    }
+    // URL에 ?ids=1,2 형태로 달아서 보냅니다.
+    router.push(`/models/compare?ids=${selectedIds.join(",")}`);
+  };
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">
           🧠 AI 모델 관리 (Model Registry)
         </h1>
-        <button
-          onClick={fetchModels}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded shadow font-bold"
-        >
-          🔄 새로고침
-        </button>
+        <div className="flex gap-2">
+          {/* 🌟 4. 비교하기 버튼 추가 */}
+          <button
+            onClick={goToComparePage}
+            className={`px-4 py-2 rounded shadow font-bold ${
+              selectedIds.length === 2
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-600 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            📊 선택한 2개 모델 비교
+          </button>
+          <button
+            onClick={fetchModels}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded shadow font-bold"
+          >
+            🔄 새로고침
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
@@ -87,6 +134,7 @@ export default function ModelRegistryPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600 font-bold uppercase border-b border-gray-200">
               <tr>
+                <th className="px-6 py-4 text-center">선택</th>
                 <th className="px-6 py-4">센서 ID</th>
                 <th className="px-6 py-4">학습 타입</th>
                 <th className="px-6 py-4">버전</th>
@@ -113,7 +161,21 @@ export default function ModelRegistryPage() {
                     key={m.model_id}
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
-                    <td className="px-6 py-4 font-bold text-gray-800">
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(m.model_id)}
+                        onChange={(e) => {
+                          e.stopPropagation(); // 상세페이지 이동 방지
+                          handleSelect(m.model_id);
+                        }}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </td>
+                    <td
+                      className="px-6 py-4 font-bold text-gray-800"
+                      onClick={() => goToDetailPage(m.model_id)}
+                    >
                       {m.mac_addr}
                     </td>
                     <td className="px-6 py-4">
