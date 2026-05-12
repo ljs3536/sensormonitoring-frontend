@@ -35,6 +35,9 @@ export function ProtoFilterBar({
   const [endDate, setEndDate] = useState(getTodayWithTime("18:00"));
   const [sensorType, setSensorType] = useState("normal");
   const [sensors, setSensors] = useState<any[]>([]);
+
+  const [updateMode, setUpdateMode] = useState<"replace" | "ema">("replace"); // 🌟 NEW
+
   const fetchSensors = async () => {
     try {
       const res = await fetch(API.SENSOR_LIST);
@@ -63,7 +66,7 @@ export function ProtoFilterBar({
     try {
       // sensor_id는 현재 선택된 센서 ID (예: "piezo_01")
       const res = await fetch(
-        API.TRAIN_PROTO_MODEL(macAddr, selectedModelType),
+        API.TRAIN_PROTO_MODEL(macAddr, selectedModelType, updateMode),
         {
           method: "POST", // 🚨 반드시 POST로 설정해야 합니다!
           headers: {
@@ -228,6 +231,15 @@ export function ProtoFilterBar({
         >
           <option value="all">All-Shot 모델 (전체평균)</option>
           <option value="few">Few-Shot 모델 (5개추출)</option>
+        </select>
+        {/* 🌟 2. [NEW] 업데이트 모드 선택 (완전교체 / 미세조정) */}
+        <select
+          value={updateMode}
+          onChange={(e) => setUpdateMode(e.target.value as "replace" | "ema")}
+          className="border border-indigo-300 rounded px-3 py-2 text-indigo-900 bg-indigo-50 font-semibold"
+        >
+          <option value="replace">새 모델로 완전 교체 (Replace)</option>
+          <option value="ema">기존 모델 10% 미세조정 (EMA)</option>
         </select>
         <button
           onClick={handleTrainModel}
