@@ -182,6 +182,13 @@ export default function ModelDetailPage() {
               <strong>3-Sigma 한계선:</strong>{" "}
               {metrics.anomaly_limit_3sigma?.toFixed(5)}
             </li>
+            {/* 메모 섹션 추가 */}
+            <li className="mt-4 p-3 bg-gray-50 rounded border border-dashed border-gray-300">
+              <strong className="block text-gray-600 mb-1">메모</strong>
+              <p className="text-gray-800 italic">
+                {model.memo || "기록된 메모가 없습니다."}
+              </p>
+            </li>
           </ul>
         </div>
       </div>

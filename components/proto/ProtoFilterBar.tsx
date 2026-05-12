@@ -63,26 +63,32 @@ export function ProtoFilterBar({
   };
   // 모델 갱신 API 호출 핸들러
   const handleTrainModel = async () => {
+    const memo = window.prompt(
+      "이번 모델 학습에 대한 메모를 입력해주세요.\n(예: 센서 위치 조정 후 재학습, 노이즈 데이터 제외 등)",
+    );
+
+    // 취소 버튼을 눌렀을 경우 함수 종료
+    if (memo === null) return;
+
     try {
-      // sensor_id는 현재 선택된 센서 ID (예: "piezo_01")
-      const res = await fetch(
-        API.TRAIN_PROTO_MODEL(macAddr, selectedModelType, updateMode),
-        {
-          method: "POST", // 🚨 반드시 POST로 설정해야 합니다!
-          headers: {
-            "Content-Type": "application/json",
-          },
+      // 2. API 호출 시 memo 전달 (URL 파라미터에 추가)
+      const url = API.TRAIN_PROTO_MODEL(macAddr, selectedModelType, updateMode);
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json", // JSON 형식임을 명시
         },
-      );
+        body: JSON.stringify({
+          memo: memo, // 메모 내용을 JSON 바디에 담기
+        }),
+      });
 
       if (res.ok) {
-        const data = await res.json();
-        alert(data.message);
-      } else {
-        console.error("훈련 요청 실패:", res.status);
+        alert("학습 요청이 완료되었습니다. 메모가 함께 저장됩니다.");
       }
     } catch (error) {
-      console.error("네트워크 에러:", error);
+      console.error("학습 요청 실패:", error);
     }
   };
 

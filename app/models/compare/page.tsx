@@ -241,6 +241,9 @@ export default function ComparePage() {
               <strong>3-Sigma 한계선:</strong>{" "}
               {modelA.eval_metrics?.anomaly_limit_3sigma?.toFixed(5)}
             </li>
+            <li className="text-xs bg-blue-50 p-2 rounded text-blue-800 mt-2">
+              <strong>MEMO:</strong> {modelA.memo || "기록 없음"}
+            </li>
             <li className="text-gray-500">
               ※{" "}
               {reliabilityA.score > 80
@@ -291,6 +294,9 @@ export default function ComparePage() {
             <li>
               <strong>3-Sigma 한계선:</strong>{" "}
               {modelB.eval_metrics?.anomaly_limit_3sigma?.toFixed(5)}
+            </li>
+            <li className="text-xs bg-red-50 p-2 rounded text-red-800 mt-2">
+              <strong>MEMO:</strong> {modelB.memo || "기록 없음"}
             </li>
             <li className="text-gray-500">
               ※{" "}
