@@ -51,6 +51,51 @@ export default function ComparePage() {
     }
   }, [idsParam]);
 
+  const getReliabilityInfo = (model: any, stats: any) => {
+    if (!model || !stats) return { score: 0, grade: "N/A", color: "gray" };
+
+    // 1. 밀집도 기반 점수 (Tightness Score)
+    // 기준: 2500점 이상이면 만점(50점), 그 이하는 비율대로 계산
+    const tightness = model.eval_metrics?.tightness_score || 0;
+    const tightnessPoint = Math.min(50, (tightness / 2500) * 50);
+
+    // 2. 판별력 기반 점수 (Confidence Score)
+    // 기준: 30%~70% 사이의 '애매한' 예측이 적을수록 만점(50점)
+    const distribution = Object.values(stats.stats || {}) as number[];
+    const totalCount = distribution.reduce((a, b) => a + b, 0);
+    // 30~40, 40~50, 50~60, 60~70 대역의 인덱스는 3, 4, 5, 6
+    const uncertainCount =
+      (distribution[3] || 0) +
+      (distribution[4] || 0) +
+      (distribution[5] || 0) +
+      (distribution[6] || 0);
+    const uncertainRatio = totalCount > 0 ? uncertainCount / totalCount : 0;
+    const confidencePoint = Math.max(0, 50 - uncertainRatio * 100); // 애매한게 50% 넘으면 0점
+
+    const totalScore = Math.round(tightnessPoint + confidencePoint);
+
+    // 3. 등급 산정
+    let grade = "C";
+    let color = "#ef4444"; // Red
+    if (totalScore >= 90) {
+      grade = "S";
+      color = "#8b5cf6";
+    } // Purple
+    else if (totalScore >= 80) {
+      grade = "A";
+      color = "#3b82f6";
+    } // Blue
+    else if (totalScore >= 70) {
+      grade = "B";
+      color = "#10b981";
+    } // Green
+
+    return { score: totalScore, grade, color };
+  };
+
+  const reliabilityA = getReliabilityInfo(modelA, statsA);
+  const reliabilityB = getReliabilityInfo(modelB, statsB);
+
   const fetchAllData = async (id1: number, id2: number) => {
     setLoading(true);
     try {
@@ -154,10 +199,33 @@ export default function ComparePage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Model A 카드 */}
-        <div className="bg-white p-6 rounded-lg shadow-lg border-t-4 border-blue-500">
+        <div className="bg-white p-6 rounded-lg shadow-lg border-t-4 border-blue-500 relative overflow-hidden">
+          {/* 등급 배지 */}
+          <div
+            className="absolute top-4 right-4 w-16 h-16 rounded-full flex flex-col items-center justify-center text-white font-black shadow-inner"
+            style={{ backgroundColor: reliabilityA.color }}
+          >
+            <span className="text-xs">GRADE</span>
+            <span className="text-2xl">{reliabilityA.grade}</span>
+          </div>
           <h2 className="text-xl font-bold mb-4 text-blue-600">
             Model A: {modelA.mac_addr} (v{modelA.version})
           </h2>
+          <div className="mb-4">
+            <div className="text-sm text-gray-500">모델 신뢰 점수</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full transition-all duration-1000"
+                  style={{
+                    width: `${reliabilityA.score}%`,
+                    backgroundColor: reliabilityA.color,
+                  }}
+                />
+              </div>
+              <span className="font-bold">{reliabilityA.score}점</span>
+            </div>
+          </div>
           <ul className="space-y-2 text-sm">
             <li>
               <strong>학습 타입:</strong> {modelA.model_type.toUpperCase()}
@@ -173,14 +241,42 @@ export default function ComparePage() {
               <strong>3-Sigma 한계선:</strong>{" "}
               {modelA.eval_metrics?.anomaly_limit_3sigma?.toFixed(5)}
             </li>
+            <li className="text-gray-500">
+              ※{" "}
+              {reliabilityA.score > 80
+                ? "매우 안정적인 탐지 성능을 보입니다."
+                : "환경 변화에 따라 미세 조정이 권장됩니다."}
+            </li>
           </ul>
         </div>
 
         {/* Model B 카드 */}
-        <div className="bg-white p-6 rounded-lg shadow-lg border-t-4 border-red-500">
+        <div className="bg-white p-6 rounded-lg shadow-lg border-t-4 border-red-500 relative overflow-hidden">
+          <div
+            className="absolute top-4 right-4 w-16 h-16 rounded-full flex flex-col items-center justify-center text-white font-black shadow-inner"
+            style={{ backgroundColor: reliabilityB.color }}
+          >
+            <span className="text-xs">GRADE</span>
+            <span className="text-2xl">{reliabilityB.grade}</span>
+          </div>
           <h2 className="text-xl font-bold mb-4 text-red-600">
             Model B: {modelB.mac_addr} (v{modelB.version})
           </h2>
+          <div className="mb-4">
+            <div className="text-sm text-gray-500">모델 신뢰 점수</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full transition-all duration-1000"
+                  style={{
+                    width: `${reliabilityB.score}%`,
+                    backgroundColor: reliabilityB.color,
+                  }}
+                />
+              </div>
+              <span className="font-bold">{reliabilityB.score}점</span>
+            </div>
+          </div>
           <ul className="space-y-2 text-sm">
             <li>
               <strong>학습 타입:</strong> {modelB.model_type.toUpperCase()}
@@ -195,6 +291,12 @@ export default function ComparePage() {
             <li>
               <strong>3-Sigma 한계선:</strong>{" "}
               {modelB.eval_metrics?.anomaly_limit_3sigma?.toFixed(5)}
+            </li>
+            <li className="text-gray-500">
+              ※{" "}
+              {reliabilityB.score > 80
+                ? "매우 안정적인 탐지 성능을 보입니다."
+                : "현재 모델은 판별 경계가 다소 불안정합니다."}
             </li>
           </ul>
         </div>
