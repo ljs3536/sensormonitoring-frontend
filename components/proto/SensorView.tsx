@@ -36,7 +36,6 @@ export function SensorView({
   // 1. RDB 데이터를 Recharts가 그릴 수 있는 형태로 변환
   const chartData = useMemo(() => {
     if (!selectedRecords || selectedRecords.length === 0) return [];
-    console.log(selectedRecords);
     // 가장 첫 번째 데이터의 길이를 기준으로 X축 생성 (보통 모든 배열 길이가 동일함)
     const firstRecordData = selectedRecords[0].sensorDataStr?.split("|");
     const dataLength = firstRecordData?.length;

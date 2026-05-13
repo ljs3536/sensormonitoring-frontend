@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { ProtoFilterBar } from "@/components/proto/ProtoFilterBar";
 import { SensorList, LeakRecord } from "@/components/proto/SensorList";
 import { SensorView } from "@/components/proto/SensorView";
@@ -19,8 +19,14 @@ export default function LeakDashboard() {
   const [selectedModelType, setSelectedModelType] = useState<"all" | "few">(
     "all",
   );
+
+  // 페이징을 위한 상태 추가
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const size = 40; // 한 페이지에 보여줄 개수
+
   // 검색 버튼을 눌렀을 때 실행되는 함수
-  const handleSearch = (data: any[]) => {
+  const handleSearch = useCallback((data: any[], totalCount: number) => {
     // 백엔드 데이터 포맷을 프론트엔드 인터페이스(LeakRecord)에 맞게 매핑
     const mappedData = data.map((item: any) => ({
       seq: item.SEQ,
@@ -32,9 +38,10 @@ export default function LeakDashboard() {
       sensorDataStr: item.SENSOR_DATA || "", // 리스트에 데이터가 없으면 빈 문자열
     }));
     setLeakData(mappedData);
+    setTotal(totalCount); // 전체 개수 저장
     setSelectedIds([]); // 검색 시 선택 초기화
     setSelectedRecords([]);
-  };
+  }, []);
   // 🌟 AI 예측 실행 함수
   const handlePredict = async () => {
     if (selectedIds.length === 0) {
@@ -134,6 +141,9 @@ export default function LeakDashboard() {
           onPredict={handlePredict}
           selectedModelType={selectedModelType}
           onModelTypeChange={setSelectedModelType}
+          page={page}
+          setPage={setPage}
+          size={size}
         />
       </section>
 
@@ -144,6 +154,10 @@ export default function LeakDashboard() {
             data={leakData}
             selectedIds={selectedIds}
             onSelectionChange={handleSelectionChange}
+            page={page}
+            total={total}
+            size={size}
+            onPageChange={setPage}
           />
         </div>
 

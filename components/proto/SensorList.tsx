@@ -17,12 +17,21 @@ interface SensorListProps {
   data?: LeakRecord[]; // 부모에서 안 넘겨줄 수도 있으므로 ? 처리 (선택)
   selectedIds?: number[];
   onSelectionChange: (selectedIds: number[]) => void;
+  // 페이징 Props 추가
+  page: number;
+  total: number;
+  size: number;
+  onPageChange: (page: number) => void;
 }
 
 export function SensorList({
   data = [], // ✨ 핵심: undefined가 들어오면 빈 배열로 초기화
   selectedIds = [], // ✨ 핵심: undefined가 들어오면 빈 배열로 초기화
   onSelectionChange,
+  page,
+  total,
+  size,
+  onPageChange,
 }: SensorListProps) {
   // 단일 체크박스 토글
   const handleToggle = (seq: number) => {
@@ -42,16 +51,18 @@ export function SensorList({
     }
   };
 
+  const totalPages = Math.max(1, Math.ceil(total / size));
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col h-full bg-white">
       {/* 데이터 건수 표시 */}
-      <div className="flex-none p-2 text-sm text-gray-600 font-bold border-b bg-gray-50 sticky top-0 z-20">
-        총: {data.length}건 {/* 기본값이 있으므로 에러 안 남 */}
+      <div className="p-2 text-sm font-bold bg-gray-100 text-gray-700 border-b flex justify-between">
+        <span>센서 수집 데이터</span>
+        <span className="text-blue-600">총 {total.toLocaleString()}건</span>
       </div>
 
-      {/* 테이블 영역 */}
-      <div className="flex-1 overflow-auto relative">
-        <table className="w-full text-center text-sm text-black">
+      {/* 테이블 영역 (스크롤 설정: flex-1 overflow-y-auto) */}
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full text-sm text-left border-collapse text-black">
           <thead className="bg-gray-100 border-b sticky top-0 z-10">
             <tr>
               <th className="p-2 w-10">
@@ -129,6 +140,30 @@ export function SensorList({
           </tbody>
         </table>
       </div>
+      {/* 하단 페이징 컨트롤러 영역 */}
+      {total > 0 && (
+        <div className="flex justify-center items-center gap-4 p-3 bg-gray-50 border-t">
+          <button
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page === 1}
+            className="px-3 py-1 bg-white border border-gray-300 rounded shadow-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 font-bold text-black"
+          >
+            이전
+          </button>
+
+          <span className="text-sm font-bold text-gray-600">
+            {page} <span className="text-gray-400">/</span> {totalPages}
+          </span>
+
+          <button
+            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-1 bg-white border border-gray-300 rounded shadow-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 font-bold text-black"
+          >
+            다음
+          </button>
+        </div>
+      )}
     </div>
   );
 }
