@@ -49,22 +49,21 @@ export function ProtoFilterBar({
 
   const fetchSensors = async () => {
     try {
-      const res = await fetch(API.SENSOR_LIST);
-      const data = await res.json();
-      // 현재 선택된 타입(piezo/adxl)에 맞는 센서만 필터링
-      // 1. 현재 선택된 타입(piezo/adxl 등)에 맞는 센서만 필터링
-      const filteredSensors = data.filter(
-        (s: any) => s.type === sensorType && s.is_active,
-      );
+      // URL에 쿼리 파라미터를 추가하여 필요한 데이터만 요청합니다.
+      const url = `${API.SENSOR_LIST}?sensor_type=${sensorType}&is_active=true`;
 
-      // 2. 상태에 저장
-      setSensors(filteredSensors);
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
 
-      if (filteredSensors.length > 0) {
-        setMacAddr(filteredSensors[0].id);
-      } else {
-        // 만약 조건에 맞는 센서가 아예 없다면 초기화
-        setMacAddr("");
+        // 🌟 백엔드에서 이미 필터링된 데이터를 주므로 바로 저장합니다.
+        setSensors(data);
+
+        if (data.length > 0) {
+          setMacAddr(data[0].id);
+        } else {
+          setMacAddr("");
+        }
       }
     } catch (e) {
       console.error("센서 로드 실패", e);

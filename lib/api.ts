@@ -51,7 +51,7 @@ export const API = {
     start: string,
     end: string,
   ) =>
-    `${BASE_URL}/api/proto/sensor/list?mac_addr=${mac}&leak_yn=${leakYn}&start_dt=${start}&end_dt=${end}`,
+    `${BASE_URL}/api/proto/sensor/data/list?mac_addr=${mac}&leak_yn=${leakYn}&start_dt=${start}&end_dt=${end}`,
 
   SENSOR_PROTO_DETAIL: (seq: number, mac: string) =>
     `${BASE_URL}/api/proto/sensor/${seq}?mac_addr=${mac}`,
@@ -71,4 +71,6 @@ export const API = {
   MODEL_DETAIL: (modelId: number) => `${BASE_URL}/api/proto/models/${modelId}`,
   MODEL_STATS: (modelId: number) =>
     `${BASE_URL}/api/proto/models/${modelId}/stats`,
+
+  PROTO_LOG_LIST: `${BASE_URL}/api/proto/logs/list`,
 } as const;

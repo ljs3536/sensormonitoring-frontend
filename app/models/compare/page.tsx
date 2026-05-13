@@ -164,10 +164,10 @@ export default function ComparePage() {
         {
           label: "중심점",
           data: [{ x: center2d[0], y: center2d[1] }],
-          backgroundColor: "#ef4444",
+          backgroundColor: "#ff4444",
           pointRadius: 8,
           pointStyle: "crossRot",
-          borderColor: "#ef4444",
+          borderColor: "#ff4444",
           borderWidth: 2,
         },
       ],

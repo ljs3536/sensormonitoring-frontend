@@ -60,6 +60,12 @@ export function Header() {
         >
           proto 모델관리
         </button>
+        <button
+          onClick={() => router.push("/logs")}
+          className={`px-6 py-1.5 text-sm font-medium rounded-md transition-all ${pathname.startsWith("//logs") ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          proto 모델예측 LOG
+        </button>
       </div>
       <div className="w-20" />
     </header>
