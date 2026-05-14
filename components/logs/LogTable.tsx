@@ -31,6 +31,7 @@ export function LogTable({
                 누출 확률
               </th>
               <th className="p-3 text-center">AI 판정</th>
+              <th className="p-3 text-center"> 사유</th>
             </tr>
           </thead>
           <tbody className="text-black">
@@ -66,6 +67,7 @@ export function LogTable({
                       {log.RESULT === "Y" ? "누출 의심" : "정상"}
                     </span>
                   </td>
+                  <td className="p-3 text-center">{log.REASON}</td>
                 </tr>
               ))
             )}
